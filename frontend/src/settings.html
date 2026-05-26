@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings — Money Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo">💰 MoneyMgr</div>
+    <ul>
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="transactions.html">💳 Transactions</a></li>
+      <li><a href="accounts.html">🏦 Accounts</a></li>
+      <li><a href="categories.html">🏷️ Categories</a></li>
+      <li><a href="budgets.html">📊 Budgets</a></li>
+      <li><a href="analytics.html">📈 Analytics</a></li>
+      <li><a href="recurring.html">🔁 Recurring</a></li>
+      <li><a href="reports.html">📋 Reports</a></li>
+      <li class="active"><a href="settings.html">⚙️ Settings</a></li>
+    </ul>
+    <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+  </nav>
+
+  <main class="main-content">
+    <div class="topbar"><h1>Settings</h1></div>
+
+    <!-- ── SECURITY / PIN ── -->
+    <div class="section-box" id="security">
+      <h3>🔐 Security — PIN Lock</h3>
+      <p style="color:#aaa">Set a 4-digit PIN to lock the app. You'll need it each time you open it.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Set / Change PIN</label>
+          <input type="password" id="pin-input" placeholder="Enter 4-digit PIN" maxlength="4" pattern="\d{4}">
+        </div>
+        <div class="form-group" style="align-self:flex-end">
+          <button class="btn-primary" onclick="setPin()">Save PIN</button>
+        </div>
+      </div>
+      <div id="pin-message"></div>
+
+      <!-- PIN Verify section (shown if PIN is set) -->
+      <div id="pin-verify-section" style="display:none;margin-top:16px">
+        <label>Verify PIN (to confirm it works)</label>
+        <div class="form-row">
+          <input type="password" id="pin-verify-input" placeholder="Enter PIN to verify" maxlength="4">
+          <button class="btn-secondary" onclick="verifyPin()">Verify</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NOTIFICATIONS ── -->
+    <div class="section-box" id="notifications">
+      <div class="section-header">
+        <h3>🔔 Notifications</h3>
+        <button class="btn-secondary" onclick="markAllRead()">Mark All Read</button>
+      </div>
+      <div id="notifications-list">Loading...</div>
+    </div>
+
+    <!-- ── PROFILE ── -->
+    <div class="section-box">
+      <h3>👤 Profile</h3>
+      <div id="profile-info">Loading...</div>
+    </div>
+
+    <!-- ── BACKUP / EXPORT ── -->
+    <div class="section-box">
+      <h3>💾 Backup & Export</h3>
+      <p style="color:#aaa">Download all your data as a JSON file. You can use this as a backup.</p>
+      <button class="btn-primary" onclick="window.location.href='reports.html'">Go to Reports & Export</button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const API = "http://localhost:8000";
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "index.html";
+
+  async function apiFetch(url, options = {}) {
+    const res = await fetch(API + url, {
+      ...options,
+      headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) }
+    });
+    if (res.status === 401) { logout(); return null; }
+    return res.json();
+  }
+
+  async function loadProfile() {
+    const data = await apiFetch("/me");
+    if (!data) return;
+    document.getElementById("profile-info").innerHTML = `
+      <div class="txn-row">
+        <div class="txn-info">
+          <span class="txn-desc">👤 ${data.username}</span>
+          <span class="txn-date">📧 ${data.email}</span>
+        </div>
+        <span style="color:${data.has_pin ? '#4CAF50' : '#FF9800'}">
+          ${data.has_pin ? '🔐 PIN set' : '⚠️ No PIN set'}
+        </span>
+      </div>
+    `;
+    if (data.has_pin) {
+      document.getElementById("pin-verify-section").style.display = "block";
+    }
+  }
+
+  async function loadNotifications() {
+    const data = await apiFetch("/notifications");
+    const container = document.getElementById("notifications-list");
+    if (!data || data.length === 0) {
+      container.innerHTML = "<p class='empty-msg'>No notifications yet.</p>"; return;
+    }
+    container.innerHTML = data.map(n => `
+      <div class="notif-row ${n.is_read ? 'read' : 'unread'}" onclick="markRead(${n.id}, this)">
+        <span class="notif-icon">${n.type === 'alert' ? '⚠️' : n.type === 'warning' ? '🔔' : 'ℹ️'}</span>
+        <div class="txn-info">
+          <span class="txn-desc">${n.message}</span>
+          <span class="txn-date">${n.created_at}</span>
+        </div>
+        ${!n.is_read ? '<span class="unread-dot"></span>' : ''}
+      </div>
+    `).join("");
+  }
+
+  async function setPin() {
+    const pin = document.getElementById("pin-input").value;
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      showPinMsg("PIN must be exactly 4 digits", "error"); return;
+    }
+    const formData = new FormData();
+    formData.append("pin", pin);
+    const res = await fetch(`${API}/pin/set`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+    const data = await res.json();
+    showPinMsg(res.ok ? "✅ PIN saved!" : data.detail, res.ok ? "success" : "error");
+    if (res.ok) {
+      document.getElementById("pin-input").value = "";
+      document.getElementById("pin-verify-section").style.display = "block";
+      loadProfile();
+    }
+  }
+
+  async function verifyPin() {
+    const pin = document.getElementById("pin-verify-input").value;
+    const formData = new FormData();
+    formData.append("pin", pin);
+    const res = await fetch(`${API}/pin/verify`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+    const data = await res.json();
+    showPinMsg(res.ok ? "✅ PIN is correct!" : "❌ Incorrect PIN", res.ok ? "success" : "error");
+  }
+
+  async function markRead(id, el) {
+    await apiFetch(`/notifications/${id}/read`, { method: "POST" });
+    el.classList.remove("unread");
+    el.classList.add("read");
+    const dot = el.querySelector(".unread-dot");
+    if (dot) dot.remove();
+  }
+
+  async function markAllRead() {
+    await apiFetch("/notifications/read-all", { method: "POST" });
+    loadNotifications();
+  }
+
+  function showPinMsg(msg, type) {
+    document.getElementById("pin-message").innerHTML =
+      `<div class="alert alert-${type}" style="margin-top:8px">${msg}</div>`;
+  }
+
+  function logout() {
+    localStorage.removeItem("token"); localStorage.removeItem("username");
+    window.location.href = "index.html";
+  }
+
+  loadProfile();
+  loadNotifications();
+</script>
+</body>
+</html>

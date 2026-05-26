@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Budgets — Money Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo">💰 MoneyMgr</div>
+    <ul>
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="transactions.html">💳 Transactions</a></li>
+      <li><a href="accounts.html">🏦 Accounts</a></li>
+      <li><a href="categories.html">🏷️ Categories</a></li>
+      <li class="active"><a href="budgets.html">📊 Budgets</a></li>
+      <li><a href="analytics.html">📈 Analytics</a></li>
+      <li><a href="recurring.html">🔁 Recurring</a></li>
+      <li><a href="reports.html">📋 Reports</a></li>
+      <li><a href="settings.html">⚙️ Settings</a></li>
+    </ul>
+    <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+  </nav>
+
+  <main class="main-content">
+    <div class="topbar">
+      <h1>Budgets</h1>
+      <button class="btn-primary" onclick="openModal()">+ Set Budget</button>
+    </div>
+
+    <div id="budget-list" class="section-box">Loading...</div>
+  </main>
+</div>
+
+<div id="modal" class="modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Set Budget</h3>
+      <button onclick="closeModal()" class="close-btn">✕</button>
+    </div>
+    <form onsubmit="submitBudget(event)">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="bud-category" required></select>
+      </div>
+      <div class="form-group">
+        <label>Budget Amount (₹)</label>
+        <input type="number" id="bud-amount" placeholder="e.g. 5000" min="1" required>
+      </div>
+      <div class="form-group">
+        <label>Period</label>
+        <select id="bud-period">
+          <option value="monthly">Monthly</option>
+          <option value="weekly">Weekly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" id="bud-start" required>
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input type="date" id="bud-end" required>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary full-width">Save Budget</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const API = "http://localhost:8000";
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "index.html";
+
+  async function apiFetch(url, options = {}) {
+    const res = await fetch(API + url, {
+      ...options,
+      headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) }
+    });
+    if (res.status === 401) { logout(); return null; }
+    return res.json();
+  }
+
+  async function loadBudgets() {
+    const data = await apiFetch("/budgets");
+    const container = document.getElementById("budget-list");
+    if (!data || data.length === 0) {
+      container.innerHTML = "<p class='empty-msg'>No budgets set yet. Create one to track your spending!</p>";
+      return;
+    }
+
+    container.innerHTML = data.map(b => {
+      // Color changes: green < 60%, yellow 60-80%, red > 80%
+      const barColor = b.percentage >= 80 ? "#F44336" : b.percentage >= 60 ? "#FF9800" : "#4CAF50";
+      return `
+        <div class="budget-row">
+          <div class="budget-header">
+            <span>${b.category_icon} ${b.category}</span>
+            <span>₹${b.spent.toLocaleString()} / ₹${b.budget_amount.toLocaleString()}</span>
+            <button class="btn-delete" onclick="deleteBudget(${b.id})">🗑</button>
+          </div>
+          <!-- Progress bar showing how much of budget is used -->
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${Math.min(b.percentage,100)}%; background:${barColor}"></div>
+          </div>
+          <div class="budget-footer">
+            <span>${b.percentage}% used</span>
+            <span style="color:${b.remaining < 0 ? '#F44336' : '#4CAF50'}">
+              ${b.remaining >= 0 ? '₹'+b.remaining.toLocaleString()+' remaining' : '₹'+Math.abs(b.remaining).toLocaleString()+' over budget!'}
+            </span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function loadCategories() {
+    const cats = await apiFetch("/categories");
+    const expenseCats = (cats || []).filter(c => c.type === "expense");
+    document.getElementById("bud-category").innerHTML =
+      expenseCats.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join("");
+  }
+
+  async function submitBudget(e) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("category_id", document.getElementById("bud-category").value);
+    formData.append("amount", document.getElementById("bud-amount").value);
+    formData.append("period", document.getElementById("bud-period").value);
+    formData.append("start_date", document.getElementById("bud-start").value);
+    formData.append("end_date", document.getElementById("bud-end").value);
+
+    const res = await fetch(`${API}/budgets`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+    if (res.ok) { closeModal(); loadBudgets(); }
+  }
+
+  async function deleteBudget(id) {
+    if (!confirm("Delete this budget?")) return;
+    await apiFetch(`/budgets/${id}`, { method: "DELETE" });
+    loadBudgets();
+  }
+
+  function openModal() {
+    // Default to start/end of current month
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+    document.getElementById("bud-start").value = start;
+    document.getElementById("bud-end").value = end;
+    document.getElementById("modal").style.display = "flex";
+  }
+  function closeModal() { document.getElementById("modal").style.display = "none"; }
+  function logout() {
+    localStorage.removeItem("token"); localStorage.removeItem("username");
+    window.location.href = "index.html";
+  }
+
+  loadCategories();
+  loadBudgets();
+</script>
+</body>
+</html>

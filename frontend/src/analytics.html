@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Analytics — Money Manager</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo">💰 MoneyMgr</div>
+    <ul>
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="transactions.html">💳 Transactions</a></li>
+      <li><a href="accounts.html">🏦 Accounts</a></li>
+      <li><a href="categories.html">🏷️ Categories</a></li>
+      <li><a href="budgets.html">📊 Budgets</a></li>
+      <li class="active"><a href="analytics.html">📈 Analytics</a></li>
+      <li><a href="recurring.html">🔁 Recurring</a></li>
+      <li><a href="reports.html">📋 Reports</a></li>
+      <li><a href="settings.html">⚙️ Settings</a></li>
+    </ul>
+    <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+  </nav>
+
+  <main class="main-content">
+    <div class="topbar">
+      <h1>Analytics</h1>
+      <select id="year-select" onchange="loadCharts()">
+        <!-- Years populated by JS -->
+      </select>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-box full-width">
+        <h3>Monthly Income vs Expense</h3>
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-box">
+        <h3>Expense by Category (This Month)</h3>
+        <canvas id="expensePie"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>Income by Category (This Month)</h3>
+        <canvas id="incomePie"></canvas>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const API = "http://localhost:8000";
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "index.html";
+
+  let barChartInstance, expPieInstance, incPieInstance;
+
+  async function apiFetch(url) {
+    const res = await fetch(API + url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.status === 401) { logout(); return null; }
+    return res.json();
+  }
+
+  function populateYears() {
+    const sel = document.getElementById("year-select");
+    const current = new Date().getFullYear();
+    for (let y = current; y >= current - 4; y--) {
+      sel.innerHTML += `<option value="${y}">${y}</option>`;
+    }
+  }
+
+  async function loadCharts() {
+    const year = document.getElementById("year-select").value;
+    const [monthly, expCat, incCat] = await Promise.all([
+      apiFetch(`/analytics/monthly?year=${year}`),
+      apiFetch(`/analytics/category-breakdown?transaction_type=expense`),
+      apiFetch(`/analytics/category-breakdown?transaction_type=income`)
+    ]);
+
+    // Destroy old charts before creating new ones (prevents canvas errors)
+    if (barChartInstance) barChartInstance.destroy();
+    if (expPieInstance) expPieInstance.destroy();
+    if (incPieInstance) incPieInstance.destroy();
+
+    if (monthly) {
+      barChartInstance = new Chart(document.getElementById("barChart"), {
+        type: "bar",
+        data: {
+          labels: monthly.map(m => m.month),
+          datasets: [
+            { label: "Income ₹", data: monthly.map(m => m.income), backgroundColor: "#4CAF50", borderRadius: 4 },
+            { label: "Expense ₹", data: monthly.map(m => m.expense), backgroundColor: "#F44336", borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: "#ccc" } } },
+          scales: { x: { ticks: { color: "#ccc" } }, y: { ticks: { color: "#ccc" }, beginAtZero: true } }
+        }
+      });
+    }
+
+    if (expCat && expCat.length > 0) {
+      expPieInstance = new Chart(document.getElementById("expensePie"), {
+        type: "doughnut",
+        data: {
+          labels: expCat.map(c => `${c.icon} ${c.category}`),
+          datasets: [{ data: expCat.map(c => c.amount), backgroundColor: expCat.map(c => c.color) }]
+        },
+        options: { responsive: true, plugins: { legend: { labels: { color: "#ccc" } } } }
+      });
+    }
+
+    if (incCat && incCat.length > 0) {
+      incPieInstance = new Chart(document.getElementById("incomePie"), {
+        type: "doughnut",
+        data: {
+          labels: incCat.map(c => `${c.icon} ${c.category}`),
+          datasets: [{ data: incCat.map(c => c.amount), backgroundColor: incCat.map(c => c.color) }]
+        },
+        options: { responsive: true, plugins: { legend: { labels: { color: "#ccc" } } } }
+      });
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem("token"); localStorage.removeItem("username");
+    window.location.href = "index.html";
+  }
+
+  populateYears();
+  loadCharts();
+</script>
+</body>
+</html>

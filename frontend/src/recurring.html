@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Recurring Payments — Money Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo">💰 MoneyMgr</div>
+    <ul>
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="transactions.html">💳 Transactions</a></li>
+      <li><a href="accounts.html">🏦 Accounts</a></li>
+      <li><a href="categories.html">🏷️ Categories</a></li>
+      <li><a href="budgets.html">📊 Budgets</a></li>
+      <li><a href="analytics.html">📈 Analytics</a></li>
+      <li class="active"><a href="recurring.html">🔁 Recurring</a></li>
+      <li><a href="reports.html">📋 Reports</a></li>
+      <li><a href="settings.html">⚙️ Settings</a></li>
+    </ul>
+    <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+  </nav>
+
+  <main class="main-content">
+    <div class="topbar">
+      <h1>Recurring Payments</h1>
+      <button class="btn-primary" onclick="openModal()">+ Add Recurring</button>
+    </div>
+    <p style="color:#aaa;margin-bottom:16px">Set up payments that repeat automatically — rent, subscriptions, salary, etc.</p>
+
+    <div id="recurring-list" class="section-box">Loading...</div>
+  </main>
+</div>
+
+<div id="modal" class="modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Add Recurring Payment</h3>
+      <button onclick="closeModal()" class="close-btn">✕</button>
+    </div>
+    <form onsubmit="submitRecurring(event)">
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="rec-desc" placeholder="e.g. Netflix, Rent, Salary" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Type</label>
+          <select id="rec-type">
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <input type="number" id="rec-amount" step="0.01" min="0.01" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="rec-category" required></select>
+        </div>
+        <div class="form-group">
+          <label>Account</label>
+          <select id="rec-account" required></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Frequency</label>
+          <select id="rec-freq">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly" selected>Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Next Date</label>
+          <input type="date" id="rec-date" required>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary full-width">Save</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const API = "http://localhost:8000";
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "index.html";
+
+  async function apiFetch(url, options = {}) {
+    const res = await fetch(API + url, {
+      ...options,
+      headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) }
+    });
+    if (res.status === 401) { logout(); return null; }
+    return res.json();
+  }
+
+  async function loadRecurring() {
+    const data = await apiFetch("/recurring");
+    const container = document.getElementById("recurring-list");
+    if (!data || data.length === 0) {
+      container.innerHTML = "<p class='empty-msg'>No recurring payments set up yet.</p>"; return;
+    }
+    container.innerHTML = data.map(r => `
+      <div class="txn-row ${r.is_active ? '' : 'dimmed'}">
+        <span class="txn-icon">${r.type === 'income' ? '📥' : '📤'}</span>
+        <div class="txn-info">
+          <span class="txn-desc">${r.description}</span>
+          <span class="txn-date">${r.frequency} · Next: ${r.next_date}</span>
+        </div>
+        <span class="txn-amount ${r.type}">${r.type === 'income' ? '+' : '-'}₹${r.amount.toLocaleString()}</span>
+        <button class="btn-toggle" onclick="toggleRecurring(${r.id})">
+          ${r.is_active ? '⏸ Pause' : '▶ Resume'}
+        </button>
+        <button class="btn-delete" onclick="deleteRecurring(${r.id})">🗑</button>
+      </div>
+    `).join("");
+  }
+
+  async function loadFormData() {
+    const [cats, accs] = await Promise.all([apiFetch("/categories"), apiFetch("/accounts")]);
+    document.getElementById("rec-category").innerHTML =
+      (cats || []).map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join("");
+    document.getElementById("rec-account").innerHTML =
+      (accs || []).map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+  }
+
+  async function submitRecurring(e) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("description", document.getElementById("rec-desc").value);
+    formData.append("transaction_type", document.getElementById("rec-type").value);
+    formData.append("amount", document.getElementById("rec-amount").value);
+    formData.append("category_id", document.getElementById("rec-category").value);
+    formData.append("account_id", document.getElementById("rec-account").value);
+    formData.append("frequency", document.getElementById("rec-freq").value);
+    formData.append("next_date", document.getElementById("rec-date").value);
+
+    const res = await fetch(`${API}/recurring`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+    if (res.ok) { closeModal(); loadRecurring(); }
+  }
+
+  async function toggleRecurring(id) {
+    await apiFetch(`/recurring/${id}/toggle`, { method: "POST" });
+    loadRecurring();
+  }
+
+  async function deleteRecurring(id) {
+    if (!confirm("Delete this recurring payment?")) return;
+    await apiFetch(`/recurring/${id}`, { method: "DELETE" });
+    loadRecurring();
+  }
+
+  function openModal() {
+    document.getElementById("rec-date").value = new Date().toISOString().split("T")[0];
+    document.getElementById("modal").style.display = "flex";
+  }
+  function closeModal() { document.getElementById("modal").style.display = "none"; }
+  function logout() {
+    localStorage.removeItem("token"); localStorage.removeItem("username");
+    window.location.href = "index.html";
+  }
+
+  loadFormData();
+  loadRecurring();
+</script>
+</body>
+</html>

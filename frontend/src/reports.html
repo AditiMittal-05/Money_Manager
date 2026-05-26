@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reports — Money Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo">💰 MoneyMgr</div>
+    <ul>
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="transactions.html">💳 Transactions</a></li>
+      <li><a href="accounts.html">🏦 Accounts</a></li>
+      <li><a href="categories.html">🏷️ Categories</a></li>
+      <li><a href="budgets.html">📊 Budgets</a></li>
+      <li><a href="analytics.html">📈 Analytics</a></li>
+      <li><a href="recurring.html">🔁 Recurring</a></li>
+      <li class="active"><a href="reports.html">📋 Reports</a></li>
+      <li><a href="settings.html">⚙️ Settings</a></li>
+    </ul>
+    <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+  </nav>
+
+  <main class="main-content">
+    <div class="topbar"><h1>Reports</h1></div>
+
+    <!-- Date range picker -->
+    <div class="section-box">
+      <div class="form-row">
+        <div class="form-group">
+          <label>From Date</label>
+          <input type="date" id="report-start">
+        </div>
+        <div class="form-group">
+          <label>To Date</label>
+          <input type="date" id="report-end">
+        </div>
+        <div class="form-group" style="align-self:flex-end">
+          <button class="btn-primary" onclick="generateReport()">Generate Report</button>
+        </div>
+        <div class="form-group" style="align-self:flex-end">
+          <button class="btn-secondary" onclick="exportJSON()">⬇️ Export JSON</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report summary cards -->
+    <div id="report-summary" style="display:none">
+      <div class="cards-row">
+        <div class="card card-income">
+          <div class="card-icon">📥</div>
+          <div>
+            <div class="card-label">Total Income</div>
+            <div class="card-value" id="rep-income">₹0</div>
+          </div>
+        </div>
+        <div class="card card-expense">
+          <div class="card-icon">📤</div>
+          <div>
+            <div class="card-label">Total Expense</div>
+            <div class="card-value" id="rep-expense">₹0</div>
+          </div>
+        </div>
+        <div class="card card-balance">
+          <div class="card-icon">💰</div>
+          <div>
+            <div class="card-label">Net Savings</div>
+            <div class="card-value" id="rep-net">₹0</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔢</div>
+          <div>
+            <div class="card-label">Transactions</div>
+            <div class="card-value" id="rep-count">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transaction table -->
+      <div class="section-box">
+        <h3>Transaction Details</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th>
+            </tr>
+          </thead>
+          <tbody id="report-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const API = "http://localhost:8000";
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "index.html";
+
+  // Default: current month
+  const now = new Date();
+  document.getElementById("report-start").value =
+    new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+  document.getElementById("report-end").value =
+    new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+
+  async function generateReport() {
+    const start = document.getElementById("report-start").value;
+    const end = document.getElementById("report-end").value;
+    if (!start || !end) { alert("Please select both dates"); return; }
+
+    const res = await fetch(`${API}/reports/summary?start_date=${start}&end_date=${end}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+
+    document.getElementById("rep-income").textContent = "₹" + data.total_income.toLocaleString();
+    document.getElementById("rep-expense").textContent = "₹" + data.total_expense.toLocaleString();
+    document.getElementById("rep-net").textContent = "₹" + data.net.toLocaleString();
+    document.getElementById("rep-count").textContent = data.transaction_count;
+
+    const tbody = document.getElementById("report-table-body");
+    tbody.innerHTML = data.transactions.map(t => `
+      <tr>
+        <td>${t.date}</td>
+        <td>${t.description || "—"}</td>
+        <td>${t.category}</td>
+        <td class="${t.type}">${t.type}</td>
+        <td class="${t.type}">${t.type === 'income' ? '+' : '-'}₹${t.amount.toLocaleString()}</td>
+      </tr>
+    `).join("");
+
+    document.getElementById("report-summary").style.display = "block";
+  }
+
+  async function exportJSON() {
+    // Download all data as a JSON file (backup)
+    const res = await fetch(`${API}/export/json`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `money-manager-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function logout() {
+    localStorage.removeItem("token"); localStorage.removeItem("username");
+    window.location.href = "index.html";
+  }
+</script>
+</body>
+</html>

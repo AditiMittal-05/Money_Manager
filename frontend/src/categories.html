@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Categories — Money Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo">💰 MoneyMgr</div>
+    <ul>
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="transactions.html">💳 Transactions</a></li>
+      <li><a href="accounts.html">🏦 Accounts</a></li>
+      <li class="active"><a href="categories.html">🏷️ Categories</a></li>
+      <li><a href="budgets.html">📊 Budgets</a></li>
+      <li><a href="analytics.html">📈 Analytics</a></li>
+      <li><a href="recurring.html">🔁 Recurring</a></li>
+      <li><a href="reports.html">📋 Reports</a></li>
+      <li><a href="settings.html">⚙️ Settings</a></li>
+    </ul>
+    <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+  </nav>
+
+  <main class="main-content">
+    <div class="topbar">
+      <h1>Categories</h1>
+      <button class="btn-primary" onclick="openModal()">+ Add Category</button>
+    </div>
+
+    <div class="two-col">
+      <div class="section-box">
+        <h3>💚 Income Categories</h3>
+        <div id="income-cats">Loading...</div>
+      </div>
+      <div class="section-box">
+        <h3>❤️ Expense Categories</h3>
+        <div id="expense-cats">Loading...</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="modal" class="modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Add Category</h3>
+      <button onclick="closeModal()" class="close-btn">✕</button>
+    </div>
+    <form onsubmit="submitCategory(event)">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="cat-name" placeholder="e.g. Groceries" required>
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="cat-type">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Icon (paste an emoji)</label>
+        <input type="text" id="cat-icon" value="💰" maxlength="2">
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <input type="color" id="cat-color" value="#FF5722">
+      </div>
+      <button type="submit" class="btn-primary full-width">Save Category</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const API = "http://localhost:8000";
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "index.html";
+
+  async function apiFetch(url, options = {}) {
+    const res = await fetch(API + url, {
+      ...options,
+      headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) }
+    });
+    if (res.status === 401) { logout(); return null; }
+    return res.json();
+  }
+
+  async function loadCategories() {
+    const data = await apiFetch("/categories");
+    const income = (data || []).filter(c => c.type === "income");
+    const expense = (data || []).filter(c => c.type === "expense");
+
+    const renderList = (cats) => cats.length === 0
+      ? "<p class='empty-msg'>None yet.</p>"
+      : cats.map(c => `
+          <div class="cat-row" style="border-left: 3px solid ${c.color}">
+            <span class="cat-icon">${c.icon}</span>
+            <span class="cat-name">${c.name}</span>
+            <button class="btn-delete" onclick="deleteCategory(${c.id})">🗑</button>
+          </div>
+        `).join("");
+
+    document.getElementById("income-cats").innerHTML = renderList(income);
+    document.getElementById("expense-cats").innerHTML = renderList(expense);
+  }
+
+  async function submitCategory(e) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("name", document.getElementById("cat-name").value);
+    formData.append("category_type", document.getElementById("cat-type").value);
+    formData.append("icon", document.getElementById("cat-icon").value);
+    formData.append("color", document.getElementById("cat-color").value);
+
+    const res = await fetch(`${API}/categories`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+    if (res.ok) { closeModal(); loadCategories(); }
+  }
+
+  async function deleteCategory(id) {
+    if (!confirm("Delete this category?")) return;
+    await apiFetch(`/categories/${id}`, { method: "DELETE" });
+    loadCategories();
+  }
+
+  function openModal() { document.getElementById("modal").style.display = "flex"; }
+  function closeModal() { document.getElementById("modal").style.display = "none"; }
+  function logout() {
+    localStorage.removeItem("token"); localStorage.removeItem("username");
+    window.location.href = "index.html";
+  }
+
+  loadCategories();
+</script>
+</body>
+</html>

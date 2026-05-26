@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Accounts — Money Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo">💰 MoneyMgr</div>
+    <ul>
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="transactions.html">💳 Transactions</a></li>
+      <li class="active"><a href="accounts.html">🏦 Accounts</a></li>
+      <li><a href="categories.html">🏷️ Categories</a></li>
+      <li><a href="budgets.html">📊 Budgets</a></li>
+      <li><a href="analytics.html">📈 Analytics</a></li>
+      <li><a href="recurring.html">🔁 Recurring</a></li>
+      <li><a href="reports.html">📋 Reports</a></li>
+      <li><a href="settings.html">⚙️ Settings</a></li>
+    </ul>
+    <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+  </nav>
+
+  <main class="main-content">
+    <div class="topbar">
+      <h1>Accounts & Wallets</h1>
+      <button class="btn-primary" onclick="openModal()">+ Add Account</button>
+    </div>
+
+    <div id="accounts-grid" class="cards-row">Loading...</div>
+  </main>
+</div>
+
+<div id="modal" class="modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Add Account</h3>
+      <button onclick="closeModal()" class="close-btn">✕</button>
+    </div>
+    <form onsubmit="submitAccount(event)">
+      <div class="form-group">
+        <label>Account Name</label>
+        <input type="text" id="acc-name" placeholder="e.g. SBI Savings" required>
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="acc-type">
+          <option value="bank">Bank Account</option>
+          <option value="cash">Cash</option>
+          <option value="wallet">Digital Wallet</option>
+          <option value="credit">Credit Card</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Opening Balance (₹)</label>
+        <input type="number" id="acc-balance" value="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <input type="color" id="acc-color" value="#4CAF50">
+      </div>
+      <button type="submit" class="btn-primary full-width">Save Account</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const API = "http://localhost:8000";
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "index.html";
+
+  async function apiFetch(url, options = {}) {
+    const res = await fetch(API + url, {
+      ...options,
+      headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) }
+    });
+    if (res.status === 401) { logout(); return null; }
+    return res.json();
+  }
+
+  async function loadAccounts() {
+    const data = await apiFetch("/accounts");
+    const grid = document.getElementById("accounts-grid");
+    if (!data || data.length === 0) {
+      grid.innerHTML = "<p class='empty-msg'>No accounts yet.</p>"; return;
+    }
+    grid.innerHTML = data.map(a => `
+      <div class="card" style="border-left: 4px solid ${a.color}">
+        <div class="card-icon">${a.type === 'bank' ? '🏦' : a.type === 'cash' ? '💵' : a.type === 'wallet' ? '📱' : '💳'}</div>
+        <div>
+          <div class="card-label">${a.name}</div>
+          <div class="card-value">₹${a.balance.toLocaleString()}</div>
+          <div class="card-sub">${a.type} · ${a.currency}</div>
+        </div>
+        <button class="btn-delete" onclick="deleteAccount(${a.id})">🗑</button>
+      </div>
+    `).join("");
+  }
+
+  async function submitAccount(e) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("name", document.getElementById("acc-name").value);
+    formData.append("account_type", document.getElementById("acc-type").value);
+    formData.append("balance", document.getElementById("acc-balance").value);
+    formData.append("color", document.getElementById("acc-color").value);
+
+    const res = await fetch(`${API}/accounts`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+    if (res.ok) { closeModal(); loadAccounts(); }
+    else { const e = await res.json(); alert(e.detail); }
+  }
+
+  async function deleteAccount(id) {
+    if (!confirm("Delete this account? Transactions will remain.")) return;
+    await apiFetch(`/accounts/${id}`, { method: "DELETE" });
+    loadAccounts();
+  }
+
+  function openModal() { document.getElementById("modal").style.display = "flex"; }
+  function closeModal() { document.getElementById("modal").style.display = "none"; }
+  function logout() {
+    localStorage.removeItem("token"); localStorage.removeItem("username");
+    window.location.href = "index.html";
+  }
+
+  loadAccounts();
+</script>
+</body>
+</html>

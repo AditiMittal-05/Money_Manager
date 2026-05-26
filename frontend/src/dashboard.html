@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Money Manager</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js for analytics charts — loaded from CDN, no install needed -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- ── SIDEBAR NAVIGATION ── -->
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo">💰 MoneyMgr</div>
+    <ul>
+      <li class="active"><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="transactions.html">💳 Transactions</a></li>
+      <li><a href="accounts.html">🏦 Accounts</a></li>
+      <li><a href="categories.html">🏷️ Categories</a></li>
+      <li><a href="budgets.html">📊 Budgets</a></li>
+      <li><a href="analytics.html">📈 Analytics</a></li>
+      <li><a href="recurring.html">🔁 Recurring</a></li>
+      <li><a href="reports.html">📋 Reports</a></li>
+      <li><a href="settings.html">⚙️ Settings</a></li>
+    </ul>
+    <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+  </nav>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="main-content">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <h1>Dashboard</h1>
+      <div class="topbar-right">
+        <span id="notif-badge" class="notif-icon" onclick="window.location='settings.html#notifications'">
+          🔔 <span id="notif-count" class="badge">0</span>
+        </span>
+        <span id="welcome-text">Welcome!</span>
+      </div>
+    </div>
+
+    <!-- Summary cards: income / expense / balance -->
+    <div class="cards-row">
+      <div class="card card-income">
+        <div class="card-icon">📥</div>
+        <div>
+          <div class="card-label">Income This Month</div>
+          <div class="card-value" id="income-val">₹0</div>
+        </div>
+      </div>
+      <div class="card card-expense">
+        <div class="card-icon">📤</div>
+        <div>
+          <div class="card-label">Expense This Month</div>
+          <div class="card-value" id="expense-val">₹0</div>
+        </div>
+      </div>
+      <div class="card card-balance">
+        <div class="card-icon">💰</div>
+        <div>
+          <div class="card-label">Net This Month</div>
+          <div class="card-value" id="balance-val">₹0</div>
+        </div>
+      </div>
+      <div class="card card-total">
+        <div class="card-icon">🏦</div>
+        <div>
+          <div class="card-label">Total Balance</div>
+          <div class="card-value" id="total-val">₹0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="charts-row">
+      <div class="chart-box">
+        <h3>Monthly Overview</h3>
+        <canvas id="monthlyChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>Spending by Category</h3>
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Recent transactions -->
+    <div class="section-box">
+      <div class="section-header">
+        <h3>Recent Transactions</h3>
+        <a href="transactions.html" class="link-all">View all →</a>
+      </div>
+      <div id="recent-list">Loading...</div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const API = "http://localhost:8000";
+  const token = localStorage.getItem("token");
+
+  // If not logged in, redirect to login page
+  if (!token) window.location.href = "index.html";
+
+  document.getElementById("welcome-text").textContent =
+    "Hello, " + (localStorage.getItem("username") || "User") + "!";
+
+  // Helper: makes authenticated API calls (sends token in header)
+  async function apiFetch(url, options = {}) {
+    const res = await fetch(API + url, {
+      ...options,
+      headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) }
+    });
+    if (res.status === 401) { logout(); return null; }
+    return res.json();
+  }
+
+  async function loadDashboard() {
+    const data = await apiFetch("/dashboard");
+    if (!data) return;
+
+    document.getElementById("income-val").textContent = "₹" + data.income_this_month.toLocaleString();
+    document.getElementById("expense-val").textContent = "₹" + data.expense_this_month.toLocaleString();
+    document.getElementById("balance-val").textContent = "₹" + data.balance_this_month.toLocaleString();
+    document.getElementById("total-val").textContent = "₹" + data.total_balance.toLocaleString();
+    document.getElementById("notif-count").textContent = data.unread_notifications;
+
+    // Render recent transactions
+    const list = document.getElementById("recent-list");
+    if (data.recent_transactions.length === 0) {
+      list.innerHTML = "<p class='empty-msg'>No transactions yet. <a href='transactions.html'>Add one!</a></p>";
+    } else {
+      list.innerHTML = data.recent_transactions.map(t => `
+        <div class="txn-row">
+          <span class="txn-icon">${t.icon}</span>
+          <div class="txn-info">
+            <span class="txn-desc">${t.description || t.category}</span>
+            <span class="txn-date">${t.date}</span>
+          </div>
+          <span class="txn-amount ${t.type === 'income' ? 'income' : 'expense'}">
+            ${t.type === 'income' ? '+' : '-'}₹${t.amount.toLocaleString()}
+          </span>
+        </div>
+      `).join("");
+    }
+
+    // Load charts
+    loadCharts();
+  }
+
+  async function loadCharts() {
+    const year = new Date().getFullYear();
+
+    // Monthly bar chart
+    const monthly = await apiFetch(`/analytics/monthly?year=${year}`);
+    if (monthly) {
+      new Chart(document.getElementById("monthlyChart"), {
+        type: "bar",
+        data: {
+          labels: monthly.map(m => m.month),
+          datasets: [
+            { label: "Income", data: monthly.map(m => m.income), backgroundColor: "#4CAF50" },
+            { label: "Expense", data: monthly.map(m => m.expense), backgroundColor: "#F44336" }
+          ]
+        },
+        options: { responsive: true, plugins: { legend: { labels: { color: "#ccc" } } },
+          scales: { x: { ticks: { color: "#ccc" } }, y: { ticks: { color: "#ccc" } } } }
+      });
+    }
+
+    // Category doughnut chart
+    const catData = await apiFetch("/analytics/category-breakdown?transaction_type=expense");
+    if (catData && catData.length > 0) {
+      new Chart(document.getElementById("categoryChart"), {
+        type: "doughnut",
+        data: {
+          labels: catData.map(c => c.category),
+          datasets: [{ data: catData.map(c => c.amount), backgroundColor: catData.map(c => c.color) }]
+        },
+        options: { responsive: true, plugins: { legend: { labels: { color: "#ccc" } } } }
+      });
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    window.location.href = "index.html";
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>
