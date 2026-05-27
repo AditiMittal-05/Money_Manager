@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 // Import all page components (each file = one page/screen)
-import Login        from './pages/Login'
+import Login          from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword  from './pages/ResetPassword'
 import Dashboard    from './pages/Dashboard'
 import Transactions from './pages/Transactions'
 import Accounts     from './pages/Accounts'
@@ -19,8 +21,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public route — anyone can see the login page */}
-        <Route path="/" element={<Login />} />
+        {/* Public routes — no login required */}
+        <Route path="/"                element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password"  element={<ResetPassword />} />
 
         {/* Protected routes — redirect to "/" if not logged in */}
         <Route path="/dashboard"    element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

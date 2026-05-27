@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
-import os, shutil
+import os, shutil, secrets
 
 from database import engine, get_db, Base
 import models
@@ -13,6 +13,8 @@ from auth import (
     hash_password, verify_password,
     create_access_token, get_current_user
 )
+from email_utils import send_otp_email
+import random
 
 # Create all database tables if they don't exist yet
 Base.metadata.create_all(bind=engine)
@@ -157,6 +159,91 @@ def verify_pin(
     if not verify_password(pin, current_user.pin_hash):
         raise HTTPException(status_code=401, detail="Incorrect PIN")
     return {"message": "PIN verified"}
+
+
+# ════════════════════════════════════════════════════════════
+# FORGOT PASSWORD / RESET PASSWORD  (OTP-based)
+# ════════════════════════════════════════════════════════════
+
+@app.post("/forgot-password")
+def forgot_password(
+    email: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Step 1 — user enters their email.
+    Generates a 6-digit OTP, stores it in DB with 10-min expiry,
+    and emails it to the user (also printed to backend console).
+
+    Always returns success — never reveals if email is registered.
+    """
+    user = db.query(models.User).filter(models.User.email == email).first()
+
+    if user:
+        # Remove any old unused OTPs for this user first
+        db.query(models.PasswordResetToken).filter(
+            models.PasswordResetToken.user_id == user.id,
+            models.PasswordResetToken.is_used == False
+        ).delete()
+        db.commit()
+
+        # Generate a 6-digit OTP e.g. "472819"
+        otp = str(random.randint(100000, 999999))
+
+        # Save in DB — expires in 10 minutes
+        record = models.PasswordResetToken(
+            user_id=user.id,
+            token=otp,
+            expires_at=datetime.utcnow() + timedelta(minutes=10)
+        )
+        db.add(record)
+        db.commit()
+
+        # Send OTP email (also prints to console)
+        send_otp_email(user.email, otp, user.username)
+
+    return {"message": "If that email is registered, an OTP has been sent to it."}
+
+
+@app.post("/reset-password")
+def reset_password(
+    email: str = Form(...),
+    otp: str = Form(...),
+    new_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Step 2 — user enters the OTP they received + their new password.
+    Validates: OTP matches, not used, not expired.
+    Then hashes and saves the new password, marks OTP as used.
+    """
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+
+    # Find user by email first
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="No account found with that email.")
+
+    # Find the OTP record
+    record = db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.user_id == user.id,
+        models.PasswordResetToken.token == otp.strip(),
+        models.PasswordResetToken.is_used == False
+    ).first()
+
+    if not record:
+        raise HTTPException(status_code=400, detail="Invalid OTP. Please check and try again.")
+
+    if datetime.utcnow() > record.expires_at:
+        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+
+    # All good — update password and mark OTP as used
+    user.password_hash = hash_password(new_password)
+    record.is_used = True
+    db.commit()
+
+    return {"message": "Password reset successfully! You can now log in with your new password."}
 
 
 # ════════════════════════════════════════════════════════════

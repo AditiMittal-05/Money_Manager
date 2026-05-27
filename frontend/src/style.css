@@ -223,11 +223,16 @@ a:hover { color: var(--accent); }
   flex: 1;
   min-width: 300px;
   border: 1px solid var(--border);
+
+  height: 300px;        /* keeps box same size */
+  overflow: hidden;     /* prevents chart going outside */
 }
 
 .chart-box h3 { margin-bottom: 16px; font-size: 15px; color: var(--muted); }
 .chart-box.full-width { flex: 0 0 100%; }
-
+canvas {
+  height: 220px !important;
+}
 /* ═══════════════════════════════════════════════════════
    SECTION BOX
    ═══════════════════════════════════════════════════════ */

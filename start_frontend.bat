@@ -8,13 +8,16 @@ echo.
 cd /d "%~dp0frontend"
 
 echo Installing packages (only slow on first run)...
-call npm install
+npm.cmd install
 
 echo.
-echo Starting React app at http://localhost:5173
+echo Starting React app...
 echo Keep this window open while using the app!
 echo.
+echo Once you see "Local: http://localhost:5173", open Chrome and go to:
+echo http://localhost:5173
+echo.
 
-call npm run dev
+npm.cmd run dev
 
 pause

@@ -22,6 +22,7 @@ class User(Base):
     budgets = relationship("Budget", back_populates="user", cascade="all, delete")
     recurring = relationship("RecurringPayment", back_populates="user", cascade="all, delete")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete")
+    reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete")
 
 
 # ── ACCOUNTS / WALLETS TABLE ──────────────────────────────────
@@ -129,3 +130,20 @@ class Notification(Base):
     created_at = Column(DateTime, default=func.now())
 
     user = relationship("User", back_populates="notifications")
+
+
+# ── PASSWORD RESET TOKENS TABLE ───────────────────────────────
+# Stores secure one-time tokens for password reset
+# A token is valid for 30 minutes and can only be used once
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # secrets.token_urlsafe(32) produces a 43-char cryptographically secure string
+    token = Column(String, unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)   # 30 minutes after creation
+    is_used = Column(Boolean, default=False)        # one-time use only
+    created_at = Column(DateTime, default=func.now())
+
+    user = relationship("User", back_populates="reset_tokens")

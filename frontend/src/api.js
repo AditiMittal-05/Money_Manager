@@ -78,6 +78,33 @@ export async function registerUser(username, email, password) {
   }
 }
 
+// ── FORGOT / RESET PASSWORD (OTP flow) ───────────────
+// Step 1: user enters email → OTP sent to their email
+export async function forgotPassword(email) {
+  try {
+    const fd = new FormData()
+    fd.append("email", email)
+    const res = await fetch(`${API_BASE}/forgot-password`, { method: "POST", body: fd })
+    return { ok: res.ok, data: await res.json() }
+  } catch {
+    return { ok: false, data: { detail: "Cannot connect to server. Make sure the backend is running." } }
+  }
+}
+
+// Step 2: user enters email + OTP + new password → password updated
+export async function resetPassword(email, otp, newPassword) {
+  try {
+    const fd = new FormData()
+    fd.append("email", email)
+    fd.append("otp", otp)
+    fd.append("new_password", newPassword)
+    const res = await fetch(`${API_BASE}/reset-password`, { method: "POST", body: fd })
+    return { ok: res.ok, data: await res.json() }
+  } catch {
+    return { ok: false, data: { detail: "Cannot connect to server. Make sure the backend is running." } }
+  }
+}
+
 // ── DASHBOARD ─────────────────────────────────────────
 export const getDashboard = () => apiFetch("/dashboard");
 
@@ -147,3 +174,13 @@ export async function verifyPin(pin) {
   const fd = new FormData(); fd.append("pin", pin);
   return apiFetch("/pin/verify", { method: "POST", body: fd });
 }
+// Verify reset token
+export const verifyResetToken = async (token) => {
+  const response = await fetch(`http://127.0.0.1:8000/auth/verify-reset-token/${token}`);
+
+  if (!response.ok) {
+    throw new Error('Invalid or expired token');
+  }
+
+  return response.json();
+};
