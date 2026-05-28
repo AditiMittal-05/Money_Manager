@@ -16,7 +16,6 @@ export default function Analytics() {
   const [expCat, setExpCat] = useState([])
   const [incCat, setIncCat] = useState([])
 
-  // Reload charts whenever the year dropdown changes
   useEffect(() => { loadCharts() }, [year])
 
   async function loadCharts() {
@@ -32,69 +31,93 @@ export default function Analytics() {
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i)
 
+  const chartHeight = 'calc(100vh - 140px)'
+
+  const barOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#ccc' } } },
+    scales: {
+      x: { ticks: { color: '#ccc' } },
+      y: { ticks: { color: '#ccc' }, beginAtZero: true }
+    }
+  }
+
   const doughnutOpts = {
     responsive: true,
-    plugins: { legend: { labels: { color: '#ccc' } } }
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { color: '#ccc', boxWidth: 12, font: { size: 11 } } } }
   }
 
   return (
     <div className="layout">
       <Sidebar />
-      <main className="main-content">
+      <main className="main-content" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div className="topbar">
           <h1>Analytics</h1>
-          <select value={year} onChange={e => setYear(Number(e.target.value))}>
+          <select
+            value={year}
+            onChange={e => setYear(Number(e.target.value))}
+            style={{ width: 110, flexShrink: 0 }}
+          >
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
 
-        <div className="charts-row">
-          <div className="chart-box full-width">
-            <h3>Monthly Income vs Expense — {year}</h3>
-            {monthly.length > 0 && (
-              <Bar
-                data={{
-                  labels: monthly.map(m => m.month),
-                  datasets: [
-                    { label: 'Income ₹', data: monthly.map(m => m.income), backgroundColor: '#4CAF50', borderRadius: 4 },
-                    { label: 'Expense ₹', data: monthly.map(m => m.expense), backgroundColor: '#F44336', borderRadius: 4 }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  plugins: { legend: { labels: { color: '#ccc' } } },
-                  scales: { x: { ticks: { color: '#ccc' } }, y: { ticks: { color: '#ccc' }, beginAtZero: true } }
-                }}
-              />
-            )}
-          </div>
-        </div>
+        {/* All 3 charts in one row, filling remaining screen height */}
+        <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0 }}>
 
-        <div className="charts-row">
-          <div className="chart-box">
-            <h3>Expense by Category (This Month)</h3>
-            {expCat.length > 0 ? (
-              <Doughnut
-                data={{
-                  labels: expCat.map(c => `${c.icon} ${c.category}`),
-                  datasets: [{ data: expCat.map(c => c.amount), backgroundColor: expCat.map(c => c.color) }]
-                }}
-                options={doughnutOpts}
-              />
-            ) : <p className="empty-msg">No expense data this month.</p>}
+          {/* Bar chart — wider (takes ~50% width) */}
+          <div className="chart-box" style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ marginBottom: 12, fontSize: 14, color: '#aaa', flexShrink: 0 }}>
+              Monthly Income vs Expense — {year}
+            </h3>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              {monthly.length > 0
+                ? <Bar data={{
+                    labels: monthly.map(m => m.month),
+                    datasets: [
+                      { label: 'Income ₹', data: monthly.map(m => m.income), backgroundColor: '#4CAF50', borderRadius: 4 },
+                      { label: 'Expense ₹', data: monthly.map(m => m.expense), backgroundColor: '#F44336', borderRadius: 4 }
+                    ]
+                  }} options={barOpts} />
+                : <p className="empty-msg">No data for {year}.</p>
+              }
+            </div>
           </div>
-          <div className="chart-box">
-            <h3>Income by Category (This Month)</h3>
-            {incCat.length > 0 ? (
-              <Doughnut
-                data={{
-                  labels: incCat.map(c => `${c.icon} ${c.category}`),
-                  datasets: [{ data: incCat.map(c => c.amount), backgroundColor: incCat.map(c => c.color) }]
-                }}
-                options={doughnutOpts}
-              />
-            ) : <p className="empty-msg">No income data this month.</p>}
+
+          {/* Expense doughnut */}
+          <div className="chart-box" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ marginBottom: 12, fontSize: 14, color: '#aaa', flexShrink: 0 }}>
+              Expense by Category
+            </h3>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              {expCat.length > 0
+                ? <Doughnut data={{
+                    labels: expCat.map(c => `${c.icon} ${c.category}`),
+                    datasets: [{ data: expCat.map(c => c.amount), backgroundColor: expCat.map(c => c.color) }]
+                  }} options={doughnutOpts} />
+                : <p className="empty-msg">No expense data this month.</p>
+              }
+            </div>
           </div>
+
+          {/* Income doughnut */}
+          <div className="chart-box" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ marginBottom: 12, fontSize: 14, color: '#aaa', flexShrink: 0 }}>
+              Income by Category
+            </h3>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              {incCat.length > 0
+                ? <Doughnut data={{
+                    labels: incCat.map(c => `${c.icon} ${c.category}`),
+                    datasets: [{ data: incCat.map(c => c.amount), backgroundColor: incCat.map(c => c.color) }]
+                  }} options={doughnutOpts} />
+                : <p className="empty-msg">No income data this month.</p>
+              }
+            </div>
+          </div>
+
         </div>
       </main>
     </div>
