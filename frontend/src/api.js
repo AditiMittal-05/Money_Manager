@@ -53,6 +53,27 @@ export async function apiFetch(path, options = {}) {
 }
 
 // ── AUTH API ───────────────────────────────────────────
+
+/**
+ * Google OAuth login.
+ * Send the Google credential (ID token) to our backend.
+ * The backend verifies it with Google and returns our own JWT.
+ * @param {string} credential - the token string from GoogleLogin's onSuccess
+ */
+export async function googleAuth(credential) {
+  try {
+    const formData = new FormData()
+    formData.append("credential", credential)
+    const res = await fetch(`${API_BASE}/auth/google`, {
+      method: "POST",
+      body: formData
+    })
+    return { ok: res.ok, data: await res.json() }
+  } catch {
+    return { ok: false, data: { detail: "Cannot connect to server. Make sure the backend is running." } }
+  }
+}
+
 export async function loginUser(username, password) {
   try {
     const formData = new FormData();

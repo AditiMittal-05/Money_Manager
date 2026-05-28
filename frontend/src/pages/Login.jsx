@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { loginUser, registerUser, saveAuth, forgotPassword, resetPassword } from '../api'
+import { GoogleLogin } from '@react-oauth/google'
+import { loginUser, registerUser, saveAuth, forgotPassword, resetPassword, googleAuth } from '../api'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -43,6 +44,19 @@ export default function Login() {
 
   // Cleanup timer when component unmounts
   useEffect(() => () => clearInterval(timerRef.current), [])
+
+  // ── GOOGLE LOGIN ──────────────────────────────────────────
+  async function handleGoogleLogin(credentialResponse) {
+    setLoading(true); setMessage(null)
+    const { ok, data } = await googleAuth(credentialResponse.credential)
+    setLoading(false)
+    if (ok) {
+      saveAuth(data.access_token, data.username)
+      navigate('/dashboard')
+    } else {
+      setMessage({ text: data.detail || 'Google login failed. Try again.', type: 'error' })
+    }
+  }
 
   // ── LOGIN ─────────────────────────────────────────────────
   async function handleLogin(e) {
@@ -184,6 +198,28 @@ export default function Login() {
                 Forgot Password?
               </button>
             </div>
+
+            {/* ── GOOGLE LOGIN DIVIDER + BUTTON ── */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 14px'
+            }}>
+              <div style={{ flex: 1, height: 1, background: '#2a2a4a' }} />
+              <span style={{ color: '#666', fontSize: 12, whiteSpace: 'nowrap' }}>or continue with</span>
+              <div style={{ flex: 1, height: 1, background: '#2a2a4a' }} />
+            </div>
+
+            {/* GoogleLogin renders the official Google button automatically */}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={() => setMessage({ text: 'Google sign-in was cancelled or failed.', type: 'error' })}
+                theme="filled_black"
+                shape="rectangular"
+                size="large"
+                text="signin_with"
+                width="360"
+              />
+            </div>
           </form>
         )}
 
@@ -210,6 +246,27 @@ export default function Login() {
             <button type="submit" className="btn-primary full-width" disabled={loading}>
               {loading ? 'Creating...' : 'Create Account'}
             </button>
+
+            {/* ── GOOGLE REGISTER DIVIDER + BUTTON ── */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 14px'
+            }}>
+              <div style={{ flex: 1, height: 1, background: '#2a2a4a' }} />
+              <span style={{ color: '#666', fontSize: 12, whiteSpace: 'nowrap' }}>or sign up with</span>
+              <div style={{ flex: 1, height: 1, background: '#2a2a4a' }} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={() => setMessage({ text: 'Google sign-up was cancelled or failed.', type: 'error' })}
+                theme="filled_black"
+                shape="rectangular"
+                size="large"
+                text="signup_with"
+                width="360"
+              />
+            </div>
           </form>
         )}
 

@@ -7,6 +7,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 import os, shutil, secrets
 
+# Google OAuth — verifies the token sent from the frontend
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+# Your Google Client ID (only the client_id value, not the full JSON)
+GOOGLE_CLIENT_ID = "495333564636-4gegah5dbg0b4hoovct7ai6d4rfceg5n.apps.googleusercontent.com"
+
 from database import engine, get_db, Base
 import models
 from auth import (
@@ -114,6 +121,114 @@ def login(
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
+    token = create_access_token({"user_id": user.id})
+    return {"access_token": token, "token_type": "bearer", "username": user.username}
+
+
+# ════════════════════════════════════════════════════════════
+# GOOGLE OAUTH ROUTE
+# ════════════════════════════════════════════════════════════
+
+@app.post("/auth/google")
+def google_auth(
+    credential: str = Form(...),   # the ID token sent from the React frontend
+    db: Session = Depends(get_db)
+):
+    """
+    Called when the user clicks 'Sign in with Google'.
+    1. Verifies the Google ID token is genuine
+    2. Extracts email + name from the token
+    3. If user exists → log them in
+    4. If new user → create account with default categories + cash wallet
+    5. Returns our app's own JWT token
+    """
+    # ── Step 1: Verify the token with Google ──
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID
+        )
+    except Exception as e:
+        # Catch ALL exceptions (ValueError, TransportError, etc.)
+        # so they become proper HTTP 400 responses with CORS headers
+        raise HTTPException(status_code=400, detail=f"Google token verification failed: {str(e)}")
+
+    # ── Step 2: Extract user info from the verified token ──
+    google_id = idinfo["sub"]          # unique Google user ID (never changes)
+    email     = idinfo["email"]
+    full_name = idinfo.get("name", "")
+
+    # Turn "John Smith" → "john_smith" as a base username
+    base_username = full_name.lower().replace(" ", "_") if full_name else email.split("@")[0]
+    # Remove any characters that aren't letters, digits, or underscores
+    base_username = "".join(c for c in base_username if c.isalnum() or c == "_")
+    if not base_username:
+        base_username = "user"
+
+    # ── Step 3: Check if this user already exists in our database ──
+    user = db.query(models.User).filter(
+        (models.User.google_id == google_id) |
+        (models.User.email == email)
+    ).first()
+
+    if user:
+        # Existing user — link their Google ID if not already linked
+        if not user.google_id:
+            user.google_id = google_id
+            db.commit()
+    else:
+        # ── Step 4: Brand new user — create their account ──
+
+        # Make sure username is unique (append numbers if needed)
+        username = base_username
+        counter = 1
+        while db.query(models.User).filter(models.User.username == username).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        user = models.User(
+            username=username,
+            email=email,
+            password_hash=hash_password(secrets.token_hex(16)),  # random unusable password
+            google_id=google_id
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        # Create the same 10 default categories every new user gets
+        default_categories = [
+            {"name": "Salary",         "type": "income",  "icon": "💼", "color": "#4CAF50"},
+            {"name": "Freelance",      "type": "income",  "icon": "💻", "color": "#2196F3"},
+            {"name": "Investment",     "type": "income",  "icon": "📈", "color": "#9C27B0"},
+            {"name": "Food & Dining",  "type": "expense", "icon": "🍕", "color": "#FF5722"},
+            {"name": "Transport",      "type": "expense", "icon": "🚗", "color": "#FF9800"},
+            {"name": "Shopping",       "type": "expense", "icon": "🛍️", "color": "#E91E63"},
+            {"name": "Bills & Utilities","type":"expense","icon": "💡", "color": "#607D8B"},
+            {"name": "Health",         "type": "expense", "icon": "🏥", "color": "#F44336"},
+            {"name": "Entertainment",  "type": "expense", "icon": "🎬", "color": "#3F51B5"},
+            {"name": "Rent",           "type": "expense", "icon": "🏠", "color": "#795548"},
+        ]
+        for cat in default_categories:
+            db.add(models.Category(
+                user_id=user.id,
+                name=cat["name"],
+                category_type=cat["type"],
+                icon=cat["icon"],
+                color=cat["color"]
+            ))
+
+        # Create a default Cash wallet
+        db.add(models.Account(
+            user_id=user.id,
+            name="Cash",
+            account_type="cash",
+            balance=0.0
+        ))
+        db.commit()
+
+    # ── Step 5: Return our own JWT token (same as normal login) ──
     token = create_access_token({"user_id": user.id})
     return {"access_token": token, "token_type": "bearer", "username": user.username}
 

@@ -13,6 +13,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)      # never store plain password
     pin_hash = Column(String, nullable=True)            # optional 4-digit PIN lock
+    google_id = Column(String, nullable=True, unique=True)  # set when user signs in with Google
     created_at = Column(DateTime, default=func.now())
 
     # relationships — lets us do user.accounts, user.transactions etc.

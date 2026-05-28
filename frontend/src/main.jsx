@@ -1,12 +1,18 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import App from './App'
 import './style.css'   // global CSS applied to every page
 
-// This is where React "mounts" (attaches) itself to the HTML
-// It takes the <div id="root"> from index.html and fills it with React
+// Your Google Client ID (same value used in backend/main.py)
+const GOOGLE_CLIENT_ID = "495333564636-4gegah5dbg0b4hoovct7ai6d4rfceg5n.apps.googleusercontent.com"
+
+// GoogleOAuthProvider makes the Google login button available to any component
+// inside the app. It must wrap the entire <App />.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <App />
+    </GoogleOAuthProvider>
   </React.StrictMode>
 )
