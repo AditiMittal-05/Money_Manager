@@ -13,6 +13,7 @@ import Analytics    from './pages/Analytics'
 import Recurring    from './pages/Recurring'
 import Reports      from './pages/Reports'
 import Settings     from './pages/Settings'
+import Profile      from './pages/Profile'
 import ProtectedRoute from './components/ProtectedRoute'
 
 // App.jsx is the router — it decides which page to show based on the URL
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/recurring"    element={<ProtectedRoute><Recurring /></ProtectedRoute>} />
         <Route path="/reports"      element={<ProtectedRoute><Reports /></ProtectedRoute>} />
         <Route path="/settings"     element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/profile"      element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Any unknown URL → go to dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

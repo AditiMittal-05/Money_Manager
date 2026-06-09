@@ -1,11 +1,13 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, text
 from datetime import datetime, timedelta
 from typing import Optional
-import os, shutil, secrets
+import os, shutil, secrets, math
 
 # Google OAuth — verifies the token sent from the frontend
 from google.oauth2 import id_token
@@ -54,8 +56,27 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Money Manager API")
 
 @app.on_event("startup")
-def seed_all_users():
-    """On every backend start, ensure all existing users have the 4 default accounts."""
+def on_startup():
+    """Run migrations and seed defaults on every backend start."""
+    # ── Add new profile columns to existing databases (safe — ignores if already exist)
+    with engine.connect() as conn:
+        for sql in [
+            "ALTER TABLE users ADD COLUMN full_name TEXT",
+            "ALTER TABLE users ADD COLUMN phone TEXT",
+            "ALTER TABLE users ADD COLUMN country TEXT DEFAULT 'India'",
+            "ALTER TABLE users ADD COLUMN currency_pref TEXT DEFAULT 'INR'",
+            "ALTER TABLE users ADD COLUMN avatar_url TEXT",
+            "ALTER TABLE users ADD COLUMN last_login DATETIME",
+            "ALTER TABLE users ADD COLUMN email_notifications BOOLEAN DEFAULT 1",
+            "ALTER TABLE users ADD COLUMN budget_alerts BOOLEAN DEFAULT 1",
+        ]:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
+
+    # ── Seed default accounts for all users
     db = SessionLocal()
     try:
         for user in db.query(models.User).all():
@@ -74,6 +95,9 @@ app.add_middleware(
 
 # Create uploads folder if it doesn't exist
 os.makedirs("../data/uploads", exist_ok=True)
+
+# Serve uploaded avatar images as static files
+app.mount("/uploads", StaticFiles(directory="../data/uploads"), name="uploads")
 
 
 # ════════════════════════════════════════════════════════════
@@ -258,13 +282,217 @@ def google_auth(
 
 @app.get("/me")
 def get_profile(current_user: models.User = Depends(get_current_user)):
-    """Get current logged-in user's info"""
     return {
         "id": current_user.id,
         "username": current_user.username,
         "email": current_user.email,
         "has_pin": current_user.pin_hash is not None
     }
+
+
+# ════════════════════════════════════════════════════════════
+# PROFILE ROUTES
+# ════════════════════════════════════════════════════════════
+
+@app.get("/profile/stats")
+def get_profile_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Full profile data + stats + financial summary + health score + achievements"""
+    # ── Account statistics
+    total_txns = db.query(models.Transaction).filter(
+        models.Transaction.user_id == current_user.id
+    ).count()
+    active_budgets = db.query(models.Budget).filter(
+        models.Budget.user_id == current_user.id
+    ).count()
+    categories_count = db.query(models.Category).filter(
+        models.Category.user_id == current_user.id
+    ).count()
+    recurring_count = db.query(models.RecurringPayment).filter(
+        models.RecurringPayment.user_id == current_user.id,
+        models.RecurringPayment.is_active == True
+    ).count()
+    days_using = max(1, (datetime.utcnow() - current_user.created_at).days + 1)
+
+    # ── Financial summary (all time)
+    total_income = db.query(func.sum(models.Transaction.amount)).filter(
+        models.Transaction.user_id == current_user.id,
+        models.Transaction.transaction_type == "income"
+    ).scalar() or 0
+    total_expense = db.query(func.sum(models.Transaction.amount)).filter(
+        models.Transaction.user_id == current_user.id,
+        models.Transaction.transaction_type == "expense"
+    ).scalar() or 0
+    total_savings = total_income - total_expense
+    savings_rate = (total_savings / total_income * 100) if total_income > 0 else 0
+
+    # ── Health score calculation (0–100)
+    score = 0
+    if savings_rate >= 30:   score += 30
+    elif savings_rate >= 20: score += 20
+    elif savings_rate >= 10: score += 10
+    elif savings_rate > 0:   score += 5
+
+    if active_budgets > 0:
+        score += 15
+        now = datetime.utcnow()
+        exceeded = 0
+        for b in db.query(models.Budget).filter(
+            models.Budget.user_id == current_user.id,
+            models.Budget.end_date >= now
+        ).all():
+            spent = db.query(func.sum(models.Transaction.amount)).filter(
+                models.Transaction.user_id == current_user.id,
+                models.Transaction.category_id == b.category_id,
+                models.Transaction.transaction_type == "expense",
+                models.Transaction.date >= b.start_date,
+                models.Transaction.date <= b.end_date
+            ).scalar() or 0
+            if spent > b.amount:
+                exceeded += 1
+        if exceeded == 0:
+            score += 15
+
+    month_start = datetime(datetime.utcnow().year, datetime.utcnow().month, 1)
+    income_this_month = db.query(func.sum(models.Transaction.amount)).filter(
+        models.Transaction.user_id == current_user.id,
+        models.Transaction.transaction_type == "income",
+        models.Transaction.date >= month_start
+    ).scalar() or 0
+    if income_this_month > 0: score += 20
+    if days_using >= 30:       score += 10
+    if current_user.pin_hash:  score += 10
+    score = min(100, score)
+
+    if score >= 80:   health_status = "Excellent"
+    elif score >= 60: health_status = "Good"
+    elif score >= 40: health_status = "Fair"
+    else:             health_status = "Needs Work"
+
+    # ── Achievements
+    def badge(icon, label, earned): return {"icon": icon, "label": label, "earned": earned}
+    achievements = [
+        badge("🏆", "First Transaction",  total_txns >= 1),
+        badge("💯", "100 Transactions",   total_txns >= 100),
+        badge("📊", "Budget Master",      active_budgets >= 1),
+        badge("💎", "Saved ₹50,000",      total_savings >= 50000),
+        badge("🔥", "30-Day Streak",      days_using >= 30),
+        badge("🔁", "Recurring Setup",    recurring_count >= 1),
+    ]
+
+    last_login_str = "Just now"
+    if getattr(current_user, "last_login", None):
+        last_login_str = current_user.last_login.strftime("%d %b %Y %H:%M")
+
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "full_name": getattr(current_user, "full_name", None) or "",
+        "email": current_user.email,
+        "phone": getattr(current_user, "phone", None) or "",
+        "country": getattr(current_user, "country", None) or "India",
+        "currency_pref": getattr(current_user, "currency_pref", None) or "INR",
+        "avatar_url": getattr(current_user, "avatar_url", None),
+        "has_pin": current_user.pin_hash is not None,
+        "google_linked": current_user.google_id is not None,
+        "joined_date": current_user.created_at.strftime("%d %b %Y"),
+        "last_login": last_login_str,
+        "email_notifications": getattr(current_user, "email_notifications", True),
+        "budget_alerts": getattr(current_user, "budget_alerts", True),
+        "stats": {
+            "total_transactions": total_txns,
+            "active_budgets": active_budgets,
+            "categories_count": categories_count,
+            "recurring_count": recurring_count,
+            "days_using": days_using,
+        },
+        "financial": {
+            "total_income":  round(total_income, 2),
+            "total_expense": round(total_expense, 2),
+            "total_savings": round(total_savings, 2),
+            "savings_rate":  round(savings_rate, 1),
+        },
+        "health": {"score": score, "status": health_status},
+        "achievements": achievements,
+    }
+
+
+@app.put("/profile/update")
+def update_profile_info(
+    full_name: str = Form(""),
+    phone: str = Form(""),
+    country: str = Form("India"),
+    currency_pref: str = Form("INR"),
+    email_notifications: str = Form("true"),
+    budget_alerts: str = Form("true"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    current_user.full_name = full_name
+    current_user.phone = phone
+    current_user.country = country
+    current_user.currency_pref = currency_pref
+    current_user.email_notifications = email_notifications.lower() == "true"
+    current_user.budget_alerts = budget_alerts.lower() == "true"
+    db.commit()
+    return {"message": "Profile updated"}
+
+
+@app.post("/profile/avatar")
+async def upload_avatar(
+    avatar: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    ext = (avatar.filename or "").split(".")[-1].lower()
+    if ext not in ("jpg", "jpeg", "png", "gif", "webp"):
+        raise HTTPException(status_code=400, detail="Unsupported file type. Use jpg, png, or webp.")
+    # Remove old avatar file
+    old = getattr(current_user, "avatar_url", None)
+    if old:
+        old_path = f"../data/uploads/{old}"
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    filename = f"avatar_{current_user.id}_{int(datetime.utcnow().timestamp())}.{ext}"
+    filepath = f"../data/uploads/{filename}"
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(avatar.file, f)
+    current_user.avatar_url = filename
+    db.commit()
+    return {"avatar_url": filename, "message": "Avatar uploaded"}
+
+
+@app.delete("/profile/avatar")
+def delete_avatar(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    old = getattr(current_user, "avatar_url", None)
+    if old:
+        old_path = f"../data/uploads/{old}"
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    current_user.avatar_url = None
+    db.commit()
+    return {"message": "Avatar deleted"}
+
+
+@app.post("/profile/change-password")
+def change_password(
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not verify_password(current_password, current_user.password_hash):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    current_user.password_hash = hash_password(new_password)
+    db.commit()
+    return {"message": "Password changed successfully"}
 
 
 # ════════════════════════════════════════════════════════════

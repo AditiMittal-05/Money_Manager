@@ -11,10 +11,20 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
-    password_hash = Column(String, nullable=False)      # never store plain password
-    pin_hash = Column(String, nullable=True)            # optional 4-digit PIN lock
-    google_id = Column(String, nullable=True, unique=True)  # set when user signs in with Google
+    password_hash = Column(String, nullable=False)
+    pin_hash = Column(String, nullable=True)
+    google_id = Column(String, nullable=True, unique=True)
     created_at = Column(DateTime, default=func.now())
+
+    # Profile fields
+    full_name = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    country = Column(String, nullable=True, default="India")
+    currency_pref = Column(String, nullable=True, default="INR")
+    avatar_url = Column(String, nullable=True)
+    last_login = Column(DateTime, nullable=True)
+    email_notifications = Column(Boolean, default=True)
+    budget_alerts = Column(Boolean, default=True)
 
     # relationships — lets us do user.accounts, user.transactions etc.
     accounts = relationship("Account", back_populates="user", cascade="all, delete")

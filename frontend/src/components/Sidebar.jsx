@@ -1,10 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { clearAuth } from '../api'
 
-// Sidebar is a REUSABLE component — written once, used on every page.
-// In the old HTML version, the sidebar was copy-pasted into every file.
-// In React, we write it once here and import it where needed.
-
 const navItems = [
   { path: '/dashboard',    icon: '🏠', label: 'Dashboard' },
   { path: '/transactions', icon: '💳', label: 'Transactions' },
@@ -18,38 +14,83 @@ const navItems = [
 ]
 
 export default function Sidebar() {
-  const navigate = useNavigate()   // useNavigate lets us programmatically change page
+  const navigate = useNavigate()
 
   function handleLogout() {
-    clearAuth()           // remove token from localStorage
-    navigate('/')         // go to login page
+    clearAuth()
+    navigate('/')
   }
 
+  const username = localStorage.getItem('username') || 'U'
+  const initials = username
+    .split(/[_\s.\-]+/)
+    .filter(Boolean)
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || username[0]?.toUpperCase() || 'U'
+
   return (
-    <nav className="sidebar">
-      <div className="sidebar-logo">💰 MoneyMgr</div>
+    <>
+      <nav className="sidebar">
+        <div className="sidebar-logo">💰 MoneyMgr</div>
 
-      <ul>
-        {navItems.map(item => (
-          <li key={item.path}>
-            {/*
-              NavLink is like <a> but React Router aware.
-              className prop receives { isActive } — we use it to add 'active' class
-              when this link matches the current URL.
-            */}
-            <NavLink
-              to={item.path}
-              className={({ isActive }) => isActive ? 'active' : ''}
-            >
-              {item.icon} {item.label}
-            </NavLink>
-          </li>
-        ))}
-      </ul>
+        <ul>
+          {navItems.map(item => (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                className={({ isActive }) => isActive ? 'active' : ''}
+              >
+                {item.icon} {item.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
 
-      <button className="btn-logout" onClick={handleLogout}>
-        🚪 Logout
-      </button>
-    </nav>
+        <button className="btn-logout" onClick={handleLogout}>
+          🚪 Logout
+        </button>
+      </nav>
+
+      {/* Profile avatar — fixed top-right corner, present on every authenticated page */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 18,
+          right: 20,
+          zIndex: 1000,
+          width: 38,
+          height: 38,
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          border: '2px solid rgba(139,92,246,0.45)',
+          boxShadow: '0 0 18px rgba(139,92,246,0.35), 0 2px 8px rgba(0,0,0,0.45)',
+          color: '#FFFFFF',
+          fontSize: 13,
+          fontWeight: 800,
+          letterSpacing: '-0.5px',
+          transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+          userSelect: 'none',
+          fontFamily: 'Inter, sans-serif',
+        }}
+        onClick={() => navigate('/profile')}
+        title={`${username} — View Profile`}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'scale(1.12)'
+          e.currentTarget.style.boxShadow = '0 0 28px rgba(139,92,246,0.65), 0 4px 14px rgba(0,0,0,0.50)'
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'scale(1)'
+          e.currentTarget.style.boxShadow = '0 0 18px rgba(139,92,246,0.35), 0 2px 8px rgba(0,0,0,0.45)'
+        }}
+      >
+        {initials}
+      </div>
+    </>
   )
 }

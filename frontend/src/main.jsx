@@ -4,6 +4,9 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import App from './App'
 import './style.css'   // global CSS applied to every page
 
+// Apply saved theme before React renders to avoid flash
+document.documentElement.dataset.theme = localStorage.getItem('theme') || 'dark'
+
 // Your Google Client ID (same value used in backend/main.py)
 const GOOGLE_CLIENT_ID = "495333564636-4gegah5dbg0b4hoovct7ai6d4rfceg5n.apps.googleusercontent.com"
 

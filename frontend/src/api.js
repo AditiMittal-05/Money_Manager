@@ -195,6 +195,45 @@ export async function verifyPin(pin) {
   const fd = new FormData(); fd.append("pin", pin);
   return apiFetch("/pin/verify", { method: "POST", body: fd });
 }
+// ── PROFILE (extended) ────────────────────────────────────
+export const getProfileStats = () => apiFetch('/profile/stats')
+
+export async function updateProfile(formData) {
+  return apiFetch('/profile/update', { method: 'PUT', body: formData })
+}
+
+export async function uploadAvatar(formData) {
+  try {
+    const token = getToken()
+    const res = await fetch(`${API_BASE}/profile/avatar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    })
+    return { ok: res.ok, data: await res.json() }
+  } catch {
+    return { ok: false, data: { detail: 'Upload failed' } }
+  }
+}
+
+export async function deleteAvatar() {
+  return apiFetch('/profile/avatar', { method: 'DELETE' })
+}
+
+export async function changePassword(formData) {
+  try {
+    const token = getToken()
+    const res = await fetch(`${API_BASE}/profile/change-password`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    })
+    return await res.json()
+  } catch {
+    return { detail: 'Request failed' }
+  }
+}
+
 // Verify reset token
 export const verifyResetToken = async (token) => {
   const response = await fetch(`http://127.0.0.1:8000/auth/verify-reset-token/${token}`);
