@@ -33,20 +33,35 @@ export default function Analytics() {
 
   const chartHeight = 'calc(100vh - 140px)'
 
+  const TICK = '#64748B'
+  const GRID = 'rgba(255,255,255,0.05)'
+
+  const BRAND_PALETTE = [
+    '#818CF8','#A78BFA','#34D399','#FCD34D',
+    '#FB7185','#38BDF8','#86EFAC','#FBBF24',
+    '#C084FC','#6EE7B7',
+  ]
+
   const barOpts = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { labels: { color: '#ccc' } } },
+    plugins: { legend: { labels: { color: TICK, boxWidth: 10, font: { size: 11, family: 'Inter' } } } },
     scales: {
-      x: { ticks: { color: '#ccc' } },
-      y: { ticks: { color: '#ccc' }, beginAtZero: true }
+      x: { ticks: { color: TICK, font: { size: 10 } }, grid: { color: GRID } },
+      y: { ticks: { color: TICK }, beginAtZero: true, grid: { color: GRID } }
     }
   }
 
   const doughnutOpts = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { position: 'bottom', labels: { color: '#ccc', boxWidth: 12, font: { size: 11 } } } }
+    cutout: '68%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { color: TICK, boxWidth: 10, font: { size: 10, family: 'Inter' }, padding: 10 }
+      }
+    }
   }
 
   return (
@@ -69,7 +84,7 @@ export default function Analytics() {
 
           {/* Bar chart — wider (takes ~50% width) */}
           <div className="chart-box" style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ marginBottom: 12, fontSize: 14, color: '#aaa', flexShrink: 0 }}>
+            <h3 style={{ marginBottom: 12, fontSize: 14, color: '#6B7280', flexShrink: 0 }}>
               Monthly Income vs Expense — {year}
             </h3>
             <div style={{ flex: 1, minHeight: 0 }}>
@@ -77,8 +92,8 @@ export default function Analytics() {
                 ? <Bar data={{
                     labels: monthly.map(m => m.month),
                     datasets: [
-                      { label: 'Income ₹', data: monthly.map(m => m.income), backgroundColor: '#4CAF50', borderRadius: 4 },
-                      { label: 'Expense ₹', data: monthly.map(m => m.expense), backgroundColor: '#F44336', borderRadius: 4 }
+                      { label: 'Income ₹',  data: monthly.map(m => m.income),  backgroundColor: '#818CF8', borderRadius: 5, borderSkipped: false },
+                      { label: 'Expense ₹', data: monthly.map(m => m.expense), backgroundColor: '#FB7185', borderRadius: 5, borderSkipped: false }
                     ]
                   }} options={barOpts} />
                 : <p className="empty-msg">No data for {year}.</p>
@@ -88,14 +103,14 @@ export default function Analytics() {
 
           {/* Expense doughnut */}
           <div className="chart-box" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ marginBottom: 12, fontSize: 14, color: '#aaa', flexShrink: 0 }}>
+            <h3 style={{ marginBottom: 12, fontSize: 14, color: '#6B7280', flexShrink: 0 }}>
               Expense by Category
             </h3>
             <div style={{ flex: 1, minHeight: 0 }}>
               {expCat.length > 0
                 ? <Doughnut data={{
                     labels: expCat.map(c => `${c.icon} ${c.category}`),
-                    datasets: [{ data: expCat.map(c => c.amount), backgroundColor: expCat.map(c => c.color) }]
+                    datasets: [{ data: expCat.map(c => c.amount), backgroundColor: expCat.map((_, i) => BRAND_PALETTE[i % BRAND_PALETTE.length]), borderWidth: 2, borderColor: '#fff' }]
                   }} options={doughnutOpts} />
                 : <p className="empty-msg">No expense data this month.</p>
               }
@@ -104,14 +119,14 @@ export default function Analytics() {
 
           {/* Income doughnut */}
           <div className="chart-box" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ marginBottom: 12, fontSize: 14, color: '#aaa', flexShrink: 0 }}>
+            <h3 style={{ marginBottom: 12, fontSize: 14, color: '#6B7280', flexShrink: 0 }}>
               Income by Category
             </h3>
             <div style={{ flex: 1, minHeight: 0 }}>
               {incCat.length > 0
                 ? <Doughnut data={{
                     labels: incCat.map(c => `${c.icon} ${c.category}`),
-                    datasets: [{ data: incCat.map(c => c.amount), backgroundColor: incCat.map(c => c.color) }]
+                    datasets: [{ data: incCat.map(c => c.amount), backgroundColor: incCat.map((_, i) => BRAND_PALETTE[i % BRAND_PALETTE.length]), borderWidth: 2, borderColor: '#fff' }]
                   }} options={doughnutOpts} />
                 : <p className="empty-msg">No income data this month.</p>
               }

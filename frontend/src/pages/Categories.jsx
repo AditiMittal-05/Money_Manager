@@ -6,7 +6,7 @@ import { getCategories, createCategory, deleteCategory } from '../api'
 export default function Categories() {
   const [categories, setCategories] = useState([])
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', category_type: 'expense', icon: '💰', color: '#FF5722' })
+  const [form, setForm] = useState({ name: '', category_type: 'expense', icon: '💰', color: '#8B5CF6' })
 
   useEffect(() => { load() }, [])
 
@@ -21,7 +21,7 @@ export default function Categories() {
     Object.entries(form).forEach(([k, v]) => fd.append(k, v))
     await createCategory(fd)
     setModalOpen(false)
-    setForm({ name: '', category_type: 'expense', icon: '💰', color: '#FF5722' })
+    setForm({ name: '', category_type: 'expense', icon: '💰', color: '#8B5CF6' })
     load()
   }
 

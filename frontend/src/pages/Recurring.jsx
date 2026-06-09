@@ -52,7 +52,7 @@ export default function Recurring() {
           <h1>Recurring Payments</h1>
           <button className="btn-primary" onClick={() => setModalOpen(true)}>+ Add Recurring</button>
         </div>
-        <p style={{ color: '#aaa', marginBottom: 16 }}>
+        <p style={{ color: '#64748B', marginBottom: 16 }}>
           Set up payments that repeat automatically — rent, subscriptions, salary, etc.
         </p>
 

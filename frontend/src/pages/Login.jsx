@@ -139,13 +139,13 @@ export default function Login() {
   // Password strength helper
   function getStrength(pwd) {
     if (!pwd) return null
-    if (pwd.length < 6) return { label: 'Too short', color: '#F44336', w: '20%' }
+    if (pwd.length < 6) return { label: 'Too short', color: '#FB7185', w: '20%' }
     const score = [/[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter(r => r.test(pwd)).length
     const map = [
-      { label: 'Weak',   color: '#FF9800', w: '40%' },
-      { label: 'Fair',   color: '#FF9800', w: '60%' },
-      { label: 'Good',   color: '#8BC34A', w: '80%' },
-      { label: 'Strong', color: '#4CAF50', w: '100%' },
+      { label: 'Weak',   color: '#FFB800', w: '40%' },
+      { label: 'Fair',   color: '#FFB800', w: '60%' },
+      { label: 'Good',   color: '#34D399', w: '80%' },
+      { label: 'Strong', color: '#34D399', w: '100%' },
     ]
     return map[score]
   }
@@ -192,7 +192,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => switchTab('reset')}
-                style={{ background: 'none', border: 'none', color: '#e94560',
+                style={{ background: 'none', border: 'none', color: '#818CF8',
                          fontSize: 13, cursor: 'pointer', padding: 0 }}
               >
                 Forgot Password?
@@ -203,9 +203,9 @@ export default function Login() {
             <div style={{
               display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 14px'
             }}>
-              <div style={{ flex: 1, height: 1, background: '#2a2a4a' }} />
-              <span style={{ color: '#666', fontSize: 12, whiteSpace: 'nowrap' }}>or continue with</span>
-              <div style={{ flex: 1, height: 1, background: '#2a2a4a' }} />
+              <div style={{ flex: 1, height: 1, background: 'rgba(139,92,246,0.20)' }} />
+              <span style={{ color: '#7B78A0', fontSize: 12, whiteSpace: 'nowrap' }}>or continue with</span>
+              <div style={{ flex: 1, height: 1, background: 'rgba(139,92,246,0.20)' }} />
             </div>
 
             {/* GoogleLogin renders the official Google button automatically */}
@@ -251,9 +251,9 @@ export default function Login() {
             <div style={{
               display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 14px'
             }}>
-              <div style={{ flex: 1, height: 1, background: '#2a2a4a' }} />
-              <span style={{ color: '#666', fontSize: 12, whiteSpace: 'nowrap' }}>or sign up with</span>
-              <div style={{ flex: 1, height: 1, background: '#2a2a4a' }} />
+              <div style={{ flex: 1, height: 1, background: 'rgba(139,92,246,0.20)' }} />
+              <span style={{ color: '#7B78A0', fontSize: 12, whiteSpace: 'nowrap' }}>or sign up with</span>
+              <div style={{ flex: 1, height: 1, background: 'rgba(139,92,246,0.20)' }} />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -281,23 +281,23 @@ export default function Login() {
                 width: 28, height: 28, borderRadius: '50%', display: 'flex',
                 alignItems: 'center', justifyContent: 'center', fontSize: 13,
                 fontWeight: 'bold', flexShrink: 0,
-                background: '#e94560', color: 'white'
+                background: '#818CF8', color: 'white'
               }}>1</div>
               <div style={{ height: 2, flex: 1,
-                background: otpSent ? '#e94560' : '#2a2a4a' }} />
+                background: otpSent ? '#818CF8' : 'rgba(139,92,246,0.20)' }} />
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', display: 'flex',
                 alignItems: 'center', justifyContent: 'center', fontSize: 13,
                 fontWeight: 'bold', flexShrink: 0,
-                background: otpSent ? '#e94560' : '#2a2a4a',
-                color: otpSent ? 'white' : '#555'
+                background: otpSent ? '#818CF8' : 'rgba(139,92,246,0.20)',
+                color: otpSent ? 'white' : '#A78BFA'
               }}>2</div>
             </div>
 
             {/* ── STEP 1: Enter email ── */}
             {!otpSent ? (
               <form onSubmit={handleSendOtp}>
-                <p style={{ color: '#aaa', fontSize: 13, marginBottom: 16 }}>
+                <p style={{ color: '#7B78A0', fontSize: 13, marginBottom: 16 }}>
                   Enter your registered email to receive a 6-digit OTP.
                 </p>
                 <div className="form-group" style={{ marginBottom: 16 }}>
@@ -313,24 +313,24 @@ export default function Login() {
             ) : (
               /* ── STEP 2: Enter OTP + new password ── */
               <form onSubmit={handleResetPassword}>
-                <p style={{ color: '#aaa', fontSize: 13, marginBottom: 16, lineHeight: 1.6 }}>
+                <p style={{ color: '#7B78A0', fontSize: 13, marginBottom: 16, lineHeight: 1.6 }}>
                   Enter the 6-digit OTP sent to{' '}
-                  <strong style={{ color: '#e0e0e0' }}>{resetEmail}</strong>
+                  <strong style={{ color: '#EDE9FE' }}>{resetEmail}</strong>
                   {countdown > 0 && (
                     <span style={{
                       marginLeft: 8, fontSize: 12,
-                      color: countdown < 60 ? '#F44336' : '#4CAF50',
-                      background: countdown < 60 ? 'rgba(244,67,54,0.1)' : 'rgba(76,175,80,0.1)',
+                      color: countdown < 60 ? '#FB7185' : '#34D399',
+                      background: countdown < 60 ? 'rgba(255,107,107,0.10)' : 'rgba(0,200,150,0.10)',
                       padding: '2px 8px', borderRadius: 10
                     }}>
                       ⏱ {mins}:{secs}
                     </span>
                   )}
                   {countdown === 0 && (
-                    <span style={{ marginLeft: 8, fontSize: 12, color: '#F44336' }}>
+                    <span style={{ marginLeft: 8, fontSize: 12, color: '#FB7185' }}>
                       OTP expired —{' '}
                       <button type="button" onClick={() => { setOtpSent(false); setOtp('') }}
-                        style={{ background:'none',border:'none',color:'#e94560',
+                        style={{ background:'none',border:'none',color:'#818CF8',
                                  cursor:'pointer',fontSize:12,padding:0,textDecoration:'underline' }}>
                         resend
                       </button>
@@ -356,12 +356,12 @@ export default function Login() {
                     autoFocus
                   />
                   {otp.length > 0 && otp.length < 6 && (
-                    <span style={{ fontSize: 11, color: '#FF9800' }}>
+                    <span style={{ fontSize: 11, color: '#FFB800' }}>
                       {6 - otp.length} more digit{6 - otp.length > 1 ? 's' : ''} needed
                     </span>
                   )}
                   {otp.length === 6 && (
-                    <span style={{ fontSize: 11, color: '#4CAF50' }}>✓ OTP complete</span>
+                    <span style={{ fontSize: 11, color: '#34D399' }}>✓ OTP complete</span>
                   )}
                 </div>
 
@@ -380,7 +380,7 @@ export default function Login() {
                     <button type="button" onClick={() => setShowNewPass(s => !s)}
                       style={{ position:'absolute', right:10, top:'50%',
                                transform:'translateY(-50%)', background:'none',
-                               border:'none', cursor:'pointer', fontSize:16, color:'#888' }}>
+                               border:'none', cursor:'pointer', fontSize:16, color:'#7B78A0' }}>
                       {showNewPass ? '🙈' : '👁️'}
                     </button>
                   </div>
@@ -389,7 +389,7 @@ export default function Login() {
                 {/* Password strength bar */}
                 {strength && (
                   <div style={{ marginBottom: 14 }}>
-                    <div style={{ height: 3, background: '#2a2a4a', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ height: 3, background: 'rgba(139,92,246,0.20)', borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: strength.w, background: strength.color,
                                     borderRadius: 2, transition: 'width 0.3s' }} />
                     </div>
@@ -409,7 +409,7 @@ export default function Login() {
                   />
                   {confirmPassword && (
                     <span style={{ fontSize: 11,
-                      color: newPassword === confirmPassword ? '#4CAF50' : '#F44336' }}>
+                      color: newPassword === confirmPassword ? '#34D399' : '#FB7185' }}>
                       {newPassword === confirmPassword ? '✓ Passwords match' : '✗ Do not match'}
                     </span>
                   )}
@@ -423,7 +423,7 @@ export default function Login() {
                 <div style={{ textAlign: 'center', marginTop: 12 }}>
                   <button type="button"
                     onClick={() => { setOtpSent(false); setOtp(''); setMessage(null) }}
-                    style={{ background:'none', border:'none', color:'#888',
+                    style={{ background:'none', border:'none', color:'#7B78A0',
                              fontSize:12, cursor:'pointer' }}>
                     ← Change email / Resend OTP
                   </button>

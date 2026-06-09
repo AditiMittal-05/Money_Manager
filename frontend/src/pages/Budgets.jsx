@@ -67,7 +67,7 @@ export default function Budgets() {
             <p className="empty-msg">No budgets set yet. Create one to track your spending!</p>
           ) : (
             budgets.map(b => {
-              const barColor = b.percentage >= 80 ? '#F44336' : b.percentage >= 60 ? '#FF9800' : '#4CAF50'
+              const barColor = b.percentage >= 80 ? '#FB7185' : b.percentage >= 60 ? '#FFB800' : '#34D399'
               return (
                 <div className="budget-row" key={b.id}>
                   <div className="budget-header">
@@ -83,7 +83,7 @@ export default function Budgets() {
                   </div>
                   <div className="budget-footer">
                     <span>{b.percentage}% used</span>
-                    <span style={{ color: b.remaining < 0 ? '#F44336' : '#4CAF50' }}>
+                    <span style={{ color: b.remaining < 0 ? '#FB7185' : '#34D399' }}>
                       {b.remaining >= 0
                         ? `₹${b.remaining.toLocaleString()} remaining`
                         : `₹${Math.abs(b.remaining).toLocaleString()} over budget!`}

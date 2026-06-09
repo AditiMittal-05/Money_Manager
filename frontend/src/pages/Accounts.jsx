@@ -6,7 +6,7 @@ import { getAccounts, createAccount, deleteAccount } from '../api'
 export default function Accounts() {
   const [accounts, setAccounts] = useState([])
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', account_type: 'bank', balance: 0, color: '#4CAF50' })
+  const [form, setForm] = useState({ name: '', account_type: 'bank', balance: 0, color: '#8B5CF6' })
 
   useEffect(() => { load() }, [])
 
@@ -21,7 +21,7 @@ export default function Accounts() {
     Object.entries(form).forEach(([k, v]) => fd.append(k, v))
     await createAccount(fd)
     setModalOpen(false)
-    setForm({ name: '', account_type: 'bank', balance: 0, color: '#4CAF50' })
+    setForm({ name: '', account_type: 'bank', balance: 0, color: '#8B5CF6' })
     load()
   }
 
@@ -33,7 +33,8 @@ export default function Accounts() {
 
   const setField = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const typeIcon = { bank: '🏦', cash: '💵', wallet: '📱', credit: '💳' }
+  const typeIcon  = { bank: '🏦', cash: '💵', wallet: '📱', credit: '💳' }
+  const typeLabel = { bank: 'Bank', cash: 'Cash', wallet: 'Wallet', credit: 'Credit Card' }
 
   return (
     <div className="layout">
@@ -54,7 +55,7 @@ export default function Accounts() {
                 <div style={{ flex: 1 }}>
                   <div className="card-label">{a.name}</div>
                   <div className="card-value">₹{a.balance.toLocaleString()}</div>
-                  <div className="card-sub">{a.type} · {a.currency}</div>
+                  <div className="card-sub">{typeLabel[a.type] || a.type} · {a.currency}</div>
                 </div>
                 <button className="btn-delete" onClick={() => handleDelete(a.id)}>🗑</button>
               </div>

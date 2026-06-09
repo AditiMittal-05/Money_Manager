@@ -85,7 +85,7 @@ export default function Settings() {
                   <span className="txn-desc">👤 {profile.username}</span>
                   <span className="txn-date">📧 {profile.email}</span>
                 </div>
-                <span style={{ color: profile.has_pin ? '#4CAF50' : '#FF9800', whiteSpace: 'nowrap' }}>
+                <span style={{ color: profile.has_pin ? '#34D399' : '#FFB800', whiteSpace: 'nowrap' }}>
                   {profile.has_pin ? '🔐 PIN set' : '⚠️ No PIN set'}
                 </span>
               </div>
@@ -95,7 +95,7 @@ export default function Settings() {
           {/* Security PIN */}
           <div className="section-box" style={boxStyle}>
             <h3 style={{ marginBottom: 8, flexShrink: 0 }}>🔐 Security — PIN Lock</h3>
-            <p style={{ color: '#aaa', marginBottom: 12, fontSize: 13, flexShrink: 0 }}>
+            <p style={{ color: '#7B78A0', marginBottom: 12, fontSize: 13, flexShrink: 0 }}>
               Set a 4-digit PIN to lock the app.
             </p>
             <form onSubmit={handleSetPin}>
@@ -170,7 +170,7 @@ export default function Settings() {
           {/* Backup & Export */}
           <div className="section-box" style={boxStyle}>
             <h3 style={{ marginBottom: 8, flexShrink: 0 }}>💾 Backup & Export</h3>
-            <p style={{ color: '#aaa', marginBottom: 16, fontSize: 13 }}>
+            <p style={{ color: '#7B78A0', marginBottom: 16, fontSize: 13 }}>
               Download all your data as a JSON file.
             </p>
             <button className="btn-primary" onClick={() => window.location.href = '/reports'}>

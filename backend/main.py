@@ -14,8 +14,32 @@ from google.auth.transport import requests as google_requests
 # Your Google Client ID (only the client_id value, not the full JSON)
 GOOGLE_CLIENT_ID = "495333564636-4gegah5dbg0b4hoovct7ai6d4rfceg5n.apps.googleusercontent.com"
 
-from database import engine, get_db, Base
+from database import engine, get_db, Base, SessionLocal
 import models
+
+# ── DEFAULT ACCOUNTS every new user gets ─────────────────────
+DEFAULT_ACCOUNTS = [
+    {"name": "Cash",         "account_type": "cash",   "color": "#4CAF50"},
+    {"name": "Paytm",        "account_type": "wallet", "color": "#002970"},
+    {"name": "Bank Account", "account_type": "bank",   "color": "#2196F3"},
+    {"name": "Credit Card",  "account_type": "credit", "color": "#9C27B0"},
+]
+
+def seed_default_accounts(user_id: int, db: Session):
+    """Insert any missing default accounts for a user (skips ones that already exist)."""
+    existing = {a.name for a in db.query(models.Account).filter(
+        models.Account.user_id == user_id
+    ).all()}
+    for acc in DEFAULT_ACCOUNTS:
+        if acc["name"] not in existing:
+            db.add(models.Account(
+                user_id=user_id,
+                name=acc["name"],
+                account_type=acc["account_type"],
+                balance=0.0,
+                color=acc["color"]
+            ))
+    db.commit()
 from auth import (
     hash_password, verify_password,
     create_access_token, get_current_user
@@ -28,6 +52,16 @@ Base.metadata.create_all(bind=engine)
 
 # Create the FastAPI app
 app = FastAPI(title="Money Manager API")
+
+@app.on_event("startup")
+def seed_all_users():
+    """On every backend start, ensure all existing users have the 4 default accounts."""
+    db = SessionLocal()
+    try:
+        for user in db.query(models.User).all():
+            seed_default_accounts(user.id, db)
+    finally:
+        db.close()
 
 # CORS — allows the frontend (different port) to talk to this backend
 app.add_middleware(
@@ -91,13 +125,8 @@ def register(
             color=cat["color"]
         ))
 
-    # Create a default Cash account
-    db.add(models.Account(
-        user_id=user.id,
-        name="Cash",
-        account_type="cash",
-        balance=0.0
-    ))
+    # Create default accounts (Cash, Paytm, Bank Account, Credit Card)
+    seed_default_accounts(user.id, db)
     db.commit()
 
     token = create_access_token({"user_id": user.id})
@@ -219,14 +248,8 @@ def google_auth(
                 color=cat["color"]
             ))
 
-        # Create a default Cash wallet
-        db.add(models.Account(
-            user_id=user.id,
-            name="Cash",
-            account_type="cash",
-            balance=0.0
-        ))
-        db.commit()
+        # Create default accounts (Cash, Paytm, Bank Account, Credit Card)
+        seed_default_accounts(user.id, db)
 
     # ── Step 5: Return our own JWT token (same as normal login) ──
     token = create_access_token({"user_id": user.id})
