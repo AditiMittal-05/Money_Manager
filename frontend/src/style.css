@@ -100,10 +100,7 @@ a:hover { color: var(--accent); }
   font-weight: 800;
   margin-bottom: 24px;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #818CF8, #C4B5FD, #A78BFA);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #FFFFFF;
 }
 
 .auth-tabs {

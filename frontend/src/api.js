@@ -234,6 +234,34 @@ export async function changePassword(formData) {
   }
 }
 
+// ── RAG CHATBOT ───────────────────────────────────────
+/**
+ * Send a message to the RAG chatbot.
+ * The backend retrieves the user's financial data and asks Gemini.
+ * Returns { reply: "..." }
+ */
+export async function sendChatMessage(message) {
+  try {
+    const fd = new FormData()
+    fd.append("message", message)
+    const token = getToken()
+    const res = await fetch(`${API_BASE}/chat`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd
+    })
+    return await res.json()
+  } catch {
+    return { reply: "Cannot connect to server. Make sure the backend is running." }
+  }
+}
+
+/** Fetch the full chat history for the current user */
+export const getChatHistory = () => apiFetch("/chat/history")
+
+/** Clear all chat messages for the current user */
+export const clearChatHistory = () => apiFetch("/chat/history", { method: "DELETE" })
+
 // Verify reset token
 export const verifyResetToken = async (token) => {
   const response = await fetch(`http://127.0.0.1:8000/auth/verify-reset-token/${token}`);

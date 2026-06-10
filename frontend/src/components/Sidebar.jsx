@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { clearAuth } from '../api'
+import ChatWidget from './ChatWidget'
 
 const navItems = [
   { path: '/dashboard',    icon: '🏠', label: 'Dashboard' },
@@ -91,6 +92,9 @@ export default function Sidebar() {
       >
         {initials}
       </div>
+
+      {/* Floating AI Chat Widget — bottom-right of every page */}
+      <ChatWidget />
     </>
   )
 }

@@ -104,7 +104,7 @@ print("Starting data generation …\n")
 EXPENSE_TEMPLATES = [
 
     # -- Food & Dining ---------------------------------------------------------
-    ("Food & Dining", ["Paytm", "Cash"], (50, 650), [
+    ("Food & Dining", ["Paytm", "Cash"], (50, 320), [
         "Zomato order", "Swiggy delivery", "Lunch at office cafeteria",
         "Dinner with family", "Breakfast at café", "Street food",
         "Domino's pizza", "McDonald's", "Grocery shopping – Big Bazaar",
@@ -122,7 +122,7 @@ EXPENSE_TEMPLATES = [
     ]),
 
     # -- Transport -------------------------------------------------------------
-    ("Transport", ["Paytm", "Cash"], (20, 550), [
+    ("Transport", ["Paytm", "Cash"], (20, 200), [
         "Uber cab", "Ola cab", "Auto rickshaw", "Metro card recharge",
         "Bus ticket", "Petrol filling", "Rapido bike taxi",
         "Station to office cab", "Weekend trip cab", "Local train ticket",
@@ -136,7 +136,7 @@ EXPENSE_TEMPLATES = [
     ]),
 
     # -- Shopping --------------------------------------------------------------
-    ("Shopping", ["Paytm", "Credit Card"], (199, 5500), [
+    ("Shopping", ["Paytm", "Credit Card"], (199, 2000), [
         "Amazon order", "Flipkart purchase", "Myntra clothes",
         "Ajio fashion haul", "Electronics – Croma", "Books – Amazon",
         "Nykaa skincare", "Household items – IKEA",
@@ -153,7 +153,7 @@ EXPENSE_TEMPLATES = [
     ]),
 
     # -- Bills & Utilities -----------------------------------------------------
-    ("Bills & Utilities", ["Bank Account"], (299, 3500), [
+    ("Bills & Utilities", ["Bank Account"], (299, 1800), [
         "Electricity bill – BESCOM", "Internet bill – Jio Fiber",
         "Mobile recharge – Airtel", "Gas cylinder – Indane",
         "Water bill", "DTH recharge – Tata Play",
@@ -166,7 +166,7 @@ EXPENSE_TEMPLATES = [
     ]),
 
     # -- Health ----------------------------------------------------------------
-    ("Health", ["Cash", "Paytm"], (150, 2800), [
+    ("Health", ["Cash", "Paytm"], (150, 1400), [
         "Medicine – Apollo Pharmacy", "Doctor consultation",
         "Gym membership monthly", "Lab test charges",
         "Dental checkup", "Eye checkup – Vision Plus",
@@ -180,7 +180,7 @@ EXPENSE_TEMPLATES = [
     ]),
 
     # -- Entertainment ---------------------------------------------------------
-    ("Entertainment", ["Paytm", "Cash"], (99, 2200), [
+    ("Entertainment", ["Paytm", "Cash"], (99, 1100), [
         "Netflix subscription", "Amazon Prime renewal",
         "Movie tickets – PVR", "Movie tickets – INOX",
         "Spotify premium", "YouTube Premium",
@@ -197,7 +197,7 @@ EXPENSE_TEMPLATES = [
     ]),
 
     # -- Rent ------------------------------------------------------------------
-    ("Rent", ["Bank Account"], (14000, 28000), [
+    ("Rent", ["Bank Account"], (12000, 18000), [
         "Monthly house rent",
         "Rent – 1BHK flat",
         "Apartment rent transfer",
@@ -214,7 +214,7 @@ INCOME_TEMPLATES = [
         "Salary – Apr 2026", "Salary – May 2026", "Salary – Jun 2026",
         "Salary – Jul 2026", "Salary – Aug 2026", "Salary – Sep 2026",
     ]),
-    ("Freelance", ["Bank Account"], (4000, 35000), [
+    ("Freelance", ["Bank Account"], (4000, 18000), [
         "Freelance project payment", "Client payment – website",
         "Logo design payment", "Consulting fee",
         "Content writing payment", "App development milestone",
@@ -226,7 +226,7 @@ INCOME_TEMPLATES = [
         "Online tutoring session", "Mentorship session",
         "Technical writing project", "LinkedIn ghostwriting",
     ]),
-    ("Investment", ["Bank Account"], (1500, 18000), [
+    ("Investment", ["Bank Account"], (1500, 7000), [
         "Mutual fund dividend", "FD interest credit",
         "Stock dividend payout", "SIP maturity",
         "RD maturity", "PPF interest credit",
@@ -240,17 +240,16 @@ INCOME_TEMPLATES = [
 MONTHLY_EXPENSE_COUNTS = {
     "Food & Dining":    (55, 65),   # ~2 transactions/day
     "Transport":        (30, 42),
-    "Shopping":         (16, 24),
+    "Shopping":         (7,  12),   # reduced — fewer big purchases per month
     "Bills & Utilities":(7,  11),
-    "Health":           (5,   9),
-    "Entertainment":    (10,  16),
+    "Health":           (4,   8),
+    "Entertainment":    (8,  13),
     "Rent":             (1,   1),   # always exactly 1
 }
-# Totals expense: 124–168, income: 4–9 → avg ~148/month → 9 months ≈ 1332
 MONTHLY_INCOME_COUNTS = {
     "Salary":     (1, 1),
-    "Freelance":  (2, 6),
-    "Investment": (1, 3),
+    "Freelance":  (1, 3),           # 1–3 freelance gigs per month
+    "Investment": (1, 2),           # 1–2 investment returns per month
 }
 
 # -- Step 5: Helper functions ---------------------------------------------------

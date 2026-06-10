@@ -16,6 +16,11 @@ from google.auth.transport import requests as google_requests
 # Your Google Client ID (only the client_id value, not the full JSON)
 GOOGLE_CLIENT_ID = "495333564636-4gegah5dbg0b4hoovct7ai6d4rfceg5n.apps.googleusercontent.com"
 
+# ── Gemini API Key for RAG Chatbot ───────────────────────────
+# Get a FREE key at: https://aistudio.google.com/app/apikey
+# ⚠️ Replace the placeholder below with your actual key
+import os
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 from database import engine, get_db, Base, SessionLocal
 import models
 
@@ -55,6 +60,28 @@ Base.metadata.create_all(bind=engine)
 # Create the FastAPI app
 app = FastAPI(title="Money Manager API")
 
+def recalculate_all_account_balances(db: Session):
+    """
+    Recalculates every account's balance by summing its transactions.
+    income transactions add to balance, expense transactions subtract.
+    Safe to run repeatedly — always produces the correct result.
+    """
+    accounts = db.query(models.Account).all()
+    for account in accounts:
+        income = db.query(func.sum(models.Transaction.amount)).filter(
+            models.Transaction.account_id == account.id,
+            models.Transaction.transaction_type == "income"
+        ).scalar() or 0
+
+        expense = db.query(func.sum(models.Transaction.amount)).filter(
+            models.Transaction.account_id == account.id,
+            models.Transaction.transaction_type == "expense"
+        ).scalar() or 0
+
+        account.balance = round(income - expense, 2)
+    db.commit()
+
+
 @app.on_event("startup")
 def on_startup():
     """Run migrations and seed defaults on every backend start."""
@@ -69,6 +96,7 @@ def on_startup():
             "ALTER TABLE users ADD COLUMN last_login DATETIME",
             "ALTER TABLE users ADD COLUMN email_notifications BOOLEAN DEFAULT 1",
             "ALTER TABLE users ADD COLUMN budget_alerts BOOLEAN DEFAULT 1",
+            "ALTER TABLE users ADD COLUMN google_id TEXT",  # Google OAuth
         ]:
             try:
                 conn.execute(text(sql))
@@ -81,6 +109,11 @@ def on_startup():
     try:
         for user in db.query(models.User).all():
             seed_default_accounts(user.id, db)
+
+        # ── Recalculate every account's balance from its transactions
+        # This fixes accounts that show ₹0 when transactions exist
+        # (happens when data was bulk-imported directly into the DB)
+        recalculate_all_account_balances(db)
     finally:
         db.close()
 
@@ -681,6 +714,16 @@ def get_dashboard(
 # ════════════════════════════════════════════════════════════
 # ACCOUNTS / WALLETS ROUTES
 # ════════════════════════════════════════════════════════════
+
+@app.post("/accounts/recalculate")
+def trigger_recalculate(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Manually recalculate all account balances from transaction history."""
+    recalculate_all_account_balances(db)
+    return {"message": "Account balances recalculated successfully"}
+
 
 @app.get("/accounts")
 def get_accounts(
@@ -1353,3 +1396,97 @@ def _check_budget_alerts(user_id: int, category_id: int, db: Session):
     if not existing:
         db.add(models.Notification(user_id=user_id, message=msg, notification_type=notif_type))
         db.commit()
+
+
+# ════════════════════════════════════════════════════════════
+# RAG CHATBOT ROUTES
+# ════════════════════════════════════════════════════════════
+
+@app.post("/chat")
+def chat(
+    message: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    RAG chatbot endpoint.
+    1. Saves the user's message to chat_messages table
+    2. Retrieves user's financial data from the DB (Retrieval)
+    3. Sends data + message to Gemini (Augmented Generation)
+    4. Saves and returns the AI reply
+    """
+    from rag_engine import ask_finance_bot
+
+    if not message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    # Save user's message
+    db.add(models.ChatMessage(
+        user_id=current_user.id,
+        role="user",
+        content=message.strip()
+    ))
+    db.commit()
+
+    # Load recent chat history so the bot remembers context
+    history_rows = db.query(models.ChatMessage).filter(
+        models.ChatMessage.user_id == current_user.id
+    ).order_by(models.ChatMessage.created_at.desc()).limit(10).all()
+
+    # Reverse so oldest is first (chronological order for the prompt)
+    chat_history = [
+        {"role": row.role, "content": row.content}
+        for row in reversed(history_rows)
+    ]
+
+    # Run the full RAG pipeline
+    reply = ask_finance_bot(
+        user_id=current_user.id,
+        question=message.strip(),
+        db=db,
+        gemini_api_key=GEMINI_API_KEY,
+        chat_history=chat_history
+    )
+
+    # Save the AI's reply
+    db.add(models.ChatMessage(
+        user_id=current_user.id,
+        role="assistant",
+        content=reply
+    ))
+    db.commit()
+
+    return {"reply": reply}
+
+
+@app.get("/chat/history")
+def get_chat_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Returns the last 50 chat messages for this user (oldest first)"""
+    messages = db.query(models.ChatMessage).filter(
+        models.ChatMessage.user_id == current_user.id
+    ).order_by(models.ChatMessage.created_at.asc()).limit(50).all()
+
+    return [
+        {
+            "role": m.role,
+            "content": m.content,
+            "time": m.created_at.strftime("%H:%M")
+        }
+        for m in messages
+    ]
+
+
+@app.delete("/chat/history")
+def clear_chat_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Clears all chat messages for this user"""
+    db.query(models.ChatMessage).filter(
+        models.ChatMessage.user_id == current_user.id
+    ).delete()
+    db.commit()
+    return {"message": "Chat history cleared"}

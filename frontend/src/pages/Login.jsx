@@ -192,7 +192,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => switchTab('reset')}
-                style={{ background: 'none', border: 'none', color: '#818CF8',
+                style={{ background: 'none', border: 'none', color: '#FFFFFF',
                          fontSize: 13, cursor: 'pointer', padding: 0 }}
               >
                 Forgot Password?
