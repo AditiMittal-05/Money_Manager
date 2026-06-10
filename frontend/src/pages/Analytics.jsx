@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fmt, useCurrency, SYMBOLS, getCurrencyCode } from '../utils/currency'
 import { Bar, Doughnut } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -11,6 +12,7 @@ import { getMonthlyAnalytics, getCategoryBreakdown } from '../api'
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 export default function Analytics() {
+  useCurrency()
   const [year, setYear] = useState(new Date().getFullYear())
   const [monthly, setMonthly] = useState([])
   const [expCat, setExpCat] = useState([])
@@ -92,8 +94,8 @@ export default function Analytics() {
                 ? <Bar data={{
                     labels: monthly.map(m => m.month),
                     datasets: [
-                      { label: 'Income ₹',  data: monthly.map(m => m.income),  backgroundColor: '#818CF8', borderRadius: 5, borderSkipped: false },
-                      { label: 'Expense ₹', data: monthly.map(m => m.expense), backgroundColor: '#FB7185', borderRadius: 5, borderSkipped: false }
+                      { label: `Income (${getCurrencyCode()})`,  data: monthly.map(m => m.income),  backgroundColor: '#818CF8', borderRadius: 5, borderSkipped: false },
+                      { label: `Expense (${getCurrencyCode()})`, data: monthly.map(m => m.expense), backgroundColor: '#FB7185', borderRadius: 5, borderSkipped: false }
                     ]
                   }} options={barOpts} />
                 : <p className="empty-msg">No data for {year}.</p>

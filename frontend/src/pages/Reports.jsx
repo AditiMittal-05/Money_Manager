@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import { getReport, exportJSON } from '../api'
+import { fmt, useCurrency } from '../utils/currency'
 
 export default function Reports() {
   const now = new Date()
+  useCurrency()
   const [startDate, setStartDate] = useState(
     new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
   )
@@ -63,21 +65,21 @@ export default function Reports() {
                 <div className="card-icon">📥</div>
                 <div>
                   <div className="card-label">Total Income</div>
-                  <div className="card-value">₹{report.total_income.toLocaleString()}</div>
+                  <div className="card-value">{fmt(report.total_income)}</div>
                 </div>
               </div>
               <div className="card card-expense">
                 <div className="card-icon">📤</div>
                 <div>
                   <div className="card-label">Total Expense</div>
-                  <div className="card-value">₹{report.total_expense.toLocaleString()}</div>
+                  <div className="card-value">{fmt(report.total_expense)}</div>
                 </div>
               </div>
               <div className="card card-balance">
                 <div className="card-icon">💰</div>
                 <div>
                   <div className="card-label">Net Savings</div>
-                  <div className="card-value">₹{report.net.toLocaleString()}</div>
+                  <div className="card-value">{fmt(report.net)}</div>
                 </div>
               </div>
               <div className="card">
@@ -105,7 +107,7 @@ export default function Reports() {
                       <td>{t.category}</td>
                       <td className={t.type}>{t.type}</td>
                       <td className={t.type}>
-                        {t.type === 'income' ? '+' : '-'}₹{t.amount.toLocaleString()}
+                        {t.type === 'income' ? '+' : '-'}{fmt(t.amount)}
                       </td>
                     </tr>
                   ))}

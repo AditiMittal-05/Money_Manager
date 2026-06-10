@@ -8,6 +8,7 @@ import {
   deleteAvatar,
   changePassword,
 } from '../api'
+import { setCurrencyPref, fmt, useCurrency } from '../utils/currency'
 
 // ── Circular SVG progress for health score ──────────────
 function CircularScore({ score, color }) {
@@ -68,6 +69,7 @@ function healthColor(score) {
 
 // ─────────────────────────────────────────────────────────
 export default function Profile() {
+  useCurrency()  // re-render financial stats when currency changes
   const [profile, setProfile] = useState(null)
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -94,11 +96,13 @@ export default function Profile() {
     const data = await getProfileStats()
     if (data) {
       setProfile(data)
+      const currPref = data.currency_pref || 'INR'
+      setCurrencyPref(currPref)   // sync localStorage + notify all pages
       setEditForm({
         full_name:           data.full_name || '',
         phone:               data.phone || '',
         country:             data.country || 'India',
-        currency_pref:       data.currency_pref || 'INR',
+        currency_pref:       currPref,
         email_notifications: data.email_notifications !== false,
         budget_alerts:       data.budget_alerts !== false,
       })
@@ -157,6 +161,7 @@ export default function Profile() {
     Object.entries(editForm).forEach(([k, v]) => fd.append(k, String(v)))
     const data = await updateProfile(fd)
     if (data) {
+      setCurrencyPref(editForm.currency_pref)  // instant update across all pages
       flash('Profile updated!')
       setEditMode(false)
       load()
@@ -356,6 +361,11 @@ export default function Profile() {
                       <option value="USD">USD — US Dollar ($)</option>
                       <option value="EUR">EUR — Euro (€)</option>
                       <option value="GBP">GBP — British Pound (£)</option>
+                      <option value="AED">AED — UAE Dirham (د.إ)</option>
+                      <option value="SGD">SGD — Singapore Dollar (S$)</option>
+                      <option value="JPY">JPY — Japanese Yen (¥)</option>
+                      <option value="CAD">CAD — Canadian Dollar (C$)</option>
+                      <option value="AUD">AUD — Australian Dollar (A$)</option>
                     </select>
                   </div>
                   <button type="submit" className="btn-primary" style={{ fontSize: 12, padding: '8px' }}>
@@ -467,9 +477,9 @@ export default function Profile() {
                 <h3 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 14 }}>💰 Financial Summary</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {[
-                    { label: 'Total Income',   value: `₹${profile.financial.total_income.toLocaleString()}`,              color: '#34D399', bg: 'rgba(52,211,153,0.10)'  },
-                    { label: 'Total Expenses', value: `₹${profile.financial.total_expense.toLocaleString()}`,             color: '#FB7185', bg: 'rgba(251,113,133,0.10)' },
-                    { label: 'Total Savings',  value: `₹${Math.max(0, profile.financial.total_savings).toLocaleString()}`, color: '#38BDF8', bg: 'rgba(56,189,248,0.10)'  },
+                    { label: 'Total Income',   value: fmt(profile.financial.total_income),              color: '#34D399', bg: 'rgba(52,211,153,0.10)'  },
+                    { label: 'Total Expenses', value: fmt(profile.financial.total_expense),             color: '#FB7185', bg: 'rgba(251,113,133,0.10)' },
+                    { label: 'Total Savings',  value: fmt(Math.max(0, profile.financial.total_savings)), color: '#38BDF8', bg: 'rgba(56,189,248,0.10)'  },
                     { label: 'Savings Rate',   value: `${profile.financial.savings_rate.toFixed(1)}%`,                    color: '#FCD34D', bg: 'rgba(252,211,77,0.10)'   },
                   ].map(({ label, value, color, bg }) => (
                     <div key={label} style={{
@@ -566,7 +576,7 @@ export default function Profile() {
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                   <div style={{ ...lbl, marginBottom: 4 }}>Currency</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)' }}>
-                    {editForm.currency_pref === 'INR' ? '₹' : editForm.currency_pref === 'USD' ? '$' : editForm.currency_pref === 'EUR' ? '€' : '£'}{' '}{editForm.currency_pref}
+                    {({ INR:'₹', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', SGD:'S$', JPY:'¥', CAD:'C$', AUD:'A$' })[editForm.currency_pref] || editForm.currency_pref}{' '}{editForm.currency_pref}
                   </div>
                 </div>
               </div>

@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Modal from '../components/Modal'
 import { getTransactions, getCategories, getAccounts, createTransaction, deleteTransaction, API_BASE, getToken } from '../api'
+import { fmt, useCurrency } from '../utils/currency'
 
 export default function Transactions() {
+  useCurrency()
   const [transactions, setTransactions] = useState([])
   const [categories, setCategories] = useState([])
   const [accounts, setAccounts] = useState([])
@@ -124,7 +126,7 @@ export default function Transactions() {
                   >🧾</a>
                 )}
                 <span className={`txn-amount ${t.type}`}>
-                  {t.type === 'income' ? '+' : '-'}₹{t.amount.toLocaleString()}
+                  {t.type === 'income' ? '+' : '-'}{fmt(t.amount)}
                 </span>
                 <button className="btn-delete" onClick={() => handleDelete(t.id)}>🗑</button>
               </div>
@@ -144,7 +146,7 @@ export default function Transactions() {
                 </select>
               </div>
               <div className="form-group">
-                <label>Amount (₹)</label>
+                <label>Amount</label>
                 <input type="number" step="0.01" min="0.01" required
                   value={form.amount} onChange={e => setField('amount', e.target.value)} />
               </div>
@@ -160,7 +162,7 @@ export default function Transactions() {
               <div className="form-group">
                 <label>Account</label>
                 <select required value={form.account_id} onChange={e => setField('account_id', e.target.value)}>
-                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name} (₹{a.balance})</option>)}
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({fmt(a.balance)})</option>)}
                 </select>
               </div>
             </div>

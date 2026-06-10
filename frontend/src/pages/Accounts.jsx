@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Modal from '../components/Modal'
 import { getAccounts, createAccount, deleteAccount } from '../api'
+import { fmt, useCurrency } from '../utils/currency'
 
 export default function Accounts() {
+  useCurrency()
   const [accounts, setAccounts] = useState([])
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({ name: '', account_type: 'bank', balance: 0, color: '#8B5CF6' })
@@ -54,7 +56,7 @@ export default function Accounts() {
                 <div className="card-icon">{typeIcon[a.type] || '🏦'}</div>
                 <div style={{ flex: 1 }}>
                   <div className="card-label">{a.name}</div>
-                  <div className="card-value">₹{a.balance.toLocaleString()}</div>
+                  <div className="card-value">{fmt(a.balance)}</div>
                   <div className="card-sub">{typeLabel[a.type] || a.type} · {a.currency}</div>
                 </div>
                 <button className="btn-delete" onClick={() => handleDelete(a.id)}>🗑</button>
@@ -80,7 +82,7 @@ export default function Accounts() {
               </select>
             </div>
             <div className="form-group">
-              <label>Opening Balance (₹)</label>
+              <label>Opening Balance</label>
               <input type="number" step="0.01"
                 value={form.balance} onChange={e => setField('balance', e.target.value)} />
             </div>

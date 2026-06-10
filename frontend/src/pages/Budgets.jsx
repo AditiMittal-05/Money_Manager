@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Modal from '../components/Modal'
 import { getBudgets, createBudget, deleteBudget, getCategories } from '../api'
+import { fmt, useCurrency } from '../utils/currency'
 
 export default function Budgets() {
+  useCurrency()
   const [budgets, setBudgets] = useState([])
   const [categories, setCategories] = useState([])
   const [modalOpen, setModalOpen] = useState(false)
@@ -72,7 +74,7 @@ export default function Budgets() {
                 <div className="budget-row" key={b.id}>
                   <div className="budget-header">
                     <span>{b.category_icon} {b.category}</span>
-                    <span>₹{b.spent.toLocaleString()} / ₹{b.budget_amount.toLocaleString()}</span>
+                    <span>{fmt(b.spent)} / {fmt(b.budget_amount)}</span>
                     <button className="btn-delete" onClick={() => handleDelete(b.id)}>🗑</button>
                   </div>
                   <div className="progress-bar">
@@ -85,8 +87,8 @@ export default function Budgets() {
                     <span>{b.percentage}% used</span>
                     <span style={{ color: b.remaining < 0 ? '#FB7185' : '#34D399' }}>
                       {b.remaining >= 0
-                        ? `₹${b.remaining.toLocaleString()} remaining`
-                        : `₹${Math.abs(b.remaining).toLocaleString()} over budget!`}
+                        ? `${fmt(b.remaining)} remaining`
+                        : `${fmt(Math.abs(b.remaining))} over budget!`}
                     </span>
                   </div>
                 </div>
@@ -104,7 +106,7 @@ export default function Budgets() {
               </select>
             </div>
             <div className="form-group">
-              <label>Budget Amount (₹)</label>
+              <label>Budget Amount</label>
               <input type="number" min="1" placeholder="e.g. 5000" required
                 value={form.amount} onChange={e => setField('amount', e.target.value)} />
             </div>

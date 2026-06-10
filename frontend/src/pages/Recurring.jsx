@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Modal from '../components/Modal'
 import { getRecurring, createRecurring, deleteRecurring, toggleRecurring, getCategories, getAccounts } from '../api'
+import { fmt, useCurrency } from '../utils/currency'
 
 export default function Recurring() {
+  useCurrency()
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [accounts, setAccounts] = useState([])
@@ -68,7 +70,7 @@ export default function Recurring() {
                   <span className="txn-date">{r.frequency} · Next: {r.next_date}</span>
                 </div>
                 <span className={`txn-amount ${r.type}`}>
-                  {r.type === 'income' ? '+' : '-'}₹{r.amount.toLocaleString()}
+                  {r.type === 'income' ? '+' : '-'}{fmt(r.amount)}
                 </span>
                 <button className="btn-toggle" onClick={async () => { await toggleRecurring(r.id); load() }}>
                   {r.is_active ? '⏸ Pause' : '▶ Resume'}
@@ -99,7 +101,7 @@ export default function Recurring() {
                 </select>
               </div>
               <div className="form-group">
-                <label>Amount (₹)</label>
+                <label>Amount</label>
                 <input type="number" step="0.01" required
                   value={form.amount} onChange={e => setField('amount', e.target.value)} />
               </div>

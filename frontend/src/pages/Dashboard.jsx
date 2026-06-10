@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fmt, useCurrency, RATES, SYMBOLS, loadLiveRates } from '../utils/currency'
 import { Bar, Doughnut } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -17,10 +18,15 @@ const BRAND_PALETTE = [
   '#C084FC','#6EE7B7',
 ]
 
+// Currencies to show in the live rates ticker
+const TICKER_CURRENCIES = ['USD', 'EUR', 'GBP', 'AED', 'SGD', 'JPY', 'AUD', 'CAD']
+
 export default function Dashboard() {
+  useCurrency()  // re-render when currency preference changes
   const [summary, setSummary]   = useState(null)
   const [monthly, setMonthly]   = useState([])
   const [catData, setCatData]   = useState([])
+  const [liveRates, setLiveRates] = useState({})
 
   useEffect(() => { loadAll() }, [])
 
@@ -32,6 +38,14 @@ export default function Dashboard() {
     if (dash) setSummary(dash)
     if (mon)  setMonthly(mon)
     if (cat)  setCatData(cat)
+
+    // Fetch live rates for the ticker
+    const rateData = await loadLiveRates()
+    if (rateData && rateData.rates) {
+      setLiveRates(rateData.rates)
+    } else {
+      setLiveRates({ ...RATES })
+    }
   }
 
   const TICK   = '#64748B'
@@ -80,6 +94,39 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* ── Live Exchange Rates Ticker ── */}
+        <div style={{
+          flexShrink: 0,
+          background: 'linear-gradient(90deg,#0f172a,#1e1b4b)',
+          borderBottom: '1px solid rgba(139,92,246,0.2)',
+          padding: '7px 18px',
+          display: 'flex', alignItems: 'center', gap: 6,
+          overflowX: 'auto', whiteSpace: 'nowrap'
+        }}>
+          <span style={{ color: '#6366f1', fontWeight: 700, fontSize: 11, marginRight: 8, flexShrink: 0 }}>
+            🌐 LIVE RATES (1 INR =)
+          </span>
+          {TICKER_CURRENCIES.map(code => {
+            const rate = liveRates[code]
+            if (!rate) return null
+            const sym = SYMBOLS[code] || code
+            return (
+              <span key={code} style={{
+                background: 'rgba(99,102,241,0.12)',
+                border: '1px solid rgba(99,102,241,0.25)',
+                borderRadius: 6,
+                padding: '3px 10px',
+                fontSize: 11.5,
+                color: '#c7d2fe',
+                flexShrink: 0
+              }}>
+                <span style={{ color: '#818cf8', fontWeight: 700 }}>{code}</span>
+                {' '}{sym}{rate < 0.01 ? rate.toFixed(4) : rate.toFixed(4)}
+              </span>
+            )
+          })}
+        </div>
+
         {/* ── KPI Cards ── */}
         <div className="cards-row" style={{ flexShrink: 0 }}>
           {summary ? (
@@ -88,7 +135,7 @@ export default function Dashboard() {
                 <div className="kpi-icon">📥</div>
                 <div>
                   <div className="card-label">Income This Month</div>
-                  <div className="card-value">₹{summary.income_this_month.toLocaleString()}</div>
+                  <div className="card-value">{fmt(summary.income_this_month)}</div>
                 </div>
               </div>
 
@@ -96,7 +143,7 @@ export default function Dashboard() {
                 <div className="kpi-icon">📤</div>
                 <div>
                   <div className="card-label">Expense This Month</div>
-                  <div className="card-value">₹{summary.expense_this_month.toLocaleString()}</div>
+                  <div className="card-value">{fmt(summary.expense_this_month)}</div>
                 </div>
               </div>
 
@@ -104,7 +151,7 @@ export default function Dashboard() {
                 <div className="kpi-icon">💰</div>
                 <div>
                   <div className="card-label">Net This Month</div>
-                  <div className="card-value">₹{summary.balance_this_month.toLocaleString()}</div>
+                  <div className="card-value">{fmt(summary.balance_this_month)}</div>
                 </div>
               </div>
 
@@ -112,7 +159,7 @@ export default function Dashboard() {
                 <div className="kpi-icon">🏦</div>
                 <div>
                   <div className="card-label">Total Balance</div>
-                  <div className="card-value">₹{summary.total_balance.toLocaleString()}</div>
+                  <div className="card-value">{fmt(summary.total_balance)}</div>
                 </div>
               </div>
             </>
@@ -180,7 +227,7 @@ export default function Dashboard() {
                       <span className="txn-date">{t.date}</span>
                     </div>
                     <span className={`txn-amount ${t.type}`}>
-                      {t.type === 'income' ? '+' : '-'}₹{t.amount.toLocaleString()}
+                      {t.type === 'income' ? '+' : '-'}{fmt(t.amount)}
                     </span>
                   </div>
                 ))

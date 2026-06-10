@@ -1399,6 +1399,37 @@ def _check_budget_alerts(user_id: int, category_id: int, db: Session):
 
 
 # ════════════════════════════════════════════════════════════
+# CURRENCY RATES ROUTE
+# ════════════════════════════════════════════════════════════
+
+@app.get("/currency/rates")
+def get_currency_rates():
+    """
+    Returns live INR exchange rates.
+    Cached for 24 hours — auto-refreshes on the next day's first request.
+    No API key needed (uses frankfurter.app — free public API).
+    """
+    from currency_utils import get_rates, DISPLAY_CURRENCIES
+    data = get_rates()
+    all_rates = data.get("rates", {})
+
+    # Only return the currencies we want to display in the widget
+    display_rates = {
+        k: round(v, 4)
+        for k, v in all_rates.items()
+        if k in DISPLAY_CURRENCIES
+    }
+
+    return {
+        "base": "INR",
+        "date": data.get("date", ""),
+        "rates": display_rates,
+        "stale": data.get("stale", False),   # True if using offline fallback
+        "fetched_at": data.get("fetched_at", 0)
+    }
+
+
+# ════════════════════════════════════════════════════════════
 # RAG CHATBOT ROUTES
 # ════════════════════════════════════════════════════════════
 

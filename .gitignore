@@ -53,9 +53,11 @@ data/*.db
 *.sqlite3
 
 
-# ── UPLOADED FILES ─────────────────────────────────────────
+# ── UPLOADED FILES & CACHE ─────────────────────────────────
 # Receipt images uploaded by users — too large for git, machine-specific
 data/uploads/
+# Auto-generated currency rate cache — refreshes automatically at runtime
+data/currency_cache.json
 
 
 # ── NODE / REACT / VITE ────────────────────────────────────

@@ -234,6 +234,10 @@ export async function changePassword(formData) {
   }
 }
 
+// ── CURRENCY RATES ────────────────────────────────────────
+/** Returns live INR exchange rates (cached 24 h on backend, auto-refreshes) */
+export const getCurrencyRates = () => apiFetch('/currency/rates')
+
 // ── RAG CHATBOT ───────────────────────────────────────
 /**
  * Send a message to the RAG chatbot.
