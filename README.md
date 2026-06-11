@@ -21,18 +21,20 @@ Money Manager is a beginner friendly full stack finance tracking application bui
 - Tailwind CSS
 
 ### Backend
-- Node.js
-- Express.js
+- Python
 
 ### Database
-- MongoDB
+- MySQL
 
 ### Tools
 - Git & GitHub
 - Postman
 
-- ## Installation
-
+## Installation
+- Using Bat file path (both)
+- npm run dev (frontend)
+- python -m uvicorn main:app (backend)
+  
 ### Clone Repository
 
 git clone https://github.com/AditiMittal-05/Money-Manager.git
